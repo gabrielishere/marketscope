@@ -1,0 +1,47 @@
+{
+  "seq": 6,
+  "spec": "trading-demo-backend",
+  "task": "T4",
+  "dispatched": true,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T4-bar-and-ring-buffer.md",
+
+  "started": "2026-09-15T23:44:28Z",
+  "ended": "2026-09-15T23:47:34Z",
+  "duration_s": 186,
+
+  "model": { "requested": "claude-opus-5", "actual": "claude-opus-5" },
+  "usage": { "turns": 26, "input": 52, "output": 15271,
+             "cache_write": 150149, "cache_read": 698957 },
+
+  "gate": { "passed": true, "defect": null },
+
+  "deliverables": [
+    { "path": "backend/app/buffer.py", "found": true,
+      "symbols": [
+        { "name": "FACTORS", "found": true, "line": 35 },
+        { "name": "Bar", "found": true, "line": 57 },
+        { "name": "RingBuffer", "found": true, "line": 83 },
+        { "name": "append", "found": true, "line": 95 },
+        { "name": "day_change_pct", "found": true, "line": 120 },
+        { "name": "session_volume", "found": true, "line": 137 }
+      ] },
+    { "path": "backend/tests/test_buffer.py", "found": true, "symbols": [] }
+  ],
+
+  "evidence": [
+    { "command": "cd backend && uv run pytest tests/test_buffer.py -v",
+      "exit": 0, "summary": "25 passed in 0.03s (+5 on run 004: the prose-name rejection case and the four boundary assertions)", "verbatim": null },
+    { "command": "cd backend && uv run pytest tests/ -q",
+      "exit": 0, "summary": "59 passed, 2 warnings in 0.17s; no earlier test regressed", "verbatim": null },
+    { "command": "cd backend && uv run python -c \"<inspect FACTORS, Bar fields, and both boundary paths>\"",
+      "exit": 0, "summary": "orchestrator inspection: FACTORS is ('market', 'rates', 'oil', 'usd', 'credit'); Bar's fields are the eight declared; day_change_pct on an empty buffer raises ValueError; session_volume on an empty buffer returns 0.0; buffer.py still imports only collections.deque and dataclasses", "verbatim": null }
+  ],
+
+  "status": { "run": "DONE", "deliverables": "MADE", "outcome": "PASSED" },
+  "commits": { "deliverables": "07266d2", "log": null },
+  "escalations": [
+    "The Buffer boundaries text — identical in the prompt and in the spec's Definitions — reads: 'day_change_pct on an empty buffer, or on one whose oldest bar falls after the current session start, raises ... session_volume on such a buffer is determined and returns the sum of what it holds.' The antecedent of 'such a buffer' covers both buffers just named, so I implemented session_volume() on an empty buffer as 0.0 — the sum of nothing — and asserted it. The prompt's Evidenced-by clause narrows the required assertion to 'session_volume on the latter', which leaves the empty case unstated there; the spec governs and its sentence scopes the raising to day_change_pct only, so 0.0 is the reading I took. This is a behaviour change from the committed run-004 implementation, which raised. If the author intended session_volume to raise on an empty buffer, one line of buffer.py and one test change.",
+    "The committed run-004 module used the prose factor keys ... Those are now ('market', 'rates', 'oil', 'usd', 'credit') per the settled decision, and Bar rejects the old spelling — T2's instruments.json beta keys, T3's per-factor shocks and T25's contributions must use the identifier-style strings or they will fail loudly here.",
+    "The run-004 module and test docstrings asserted the boundary cases were 'not settled by the definitions'. That framing is gone; both files now state the behaviour as required by Buffer boundaries."
+  ]
+}
