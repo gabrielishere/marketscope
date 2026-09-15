@@ -176,6 +176,37 @@ Every frontend task therefore splits its evidence in two:
   reviewer walks. The implementor **must not** report these as observed, and a report that
   does is a defect worth escalating rather than a result to record.
 
+### The review order
+
+Twelve tasks each deferring two or three items is roughly two dozen checks, and a reviewer
+walking them in task order walks them in the order they were *built*, not the order in which
+they matter. A rushed pass down that list spends its attention on tile ordering and reaches
+the feature the demo exists for last.
+
+So the review has one order, below, and it is an **index** — each row names the task that
+defers the item and a short label. The wording that governs lives in the task block and
+nowhere else, because a second copy of a check is free to disagree with the first.
+
+Walk it top to bottom with the app running. **F1–F5 are the demo**; if any of them is wrong
+nothing below it matters.
+
+| | Task | The check |
+|---|---|---|
+| **F1** | T22 | selecting a scenario changes the data without waiting out the poll |
+| **F2** | T21 | the movers lists repopulate under the oil shock |
+| **F3** | T19 | the activation marker appears, and is absent at baseline |
+| **F4** | T24 | the collapsed impact panel reads as plain language, no exposure values |
+| **F5** | T23 | the headlines swap within one refresh |
+| **F6** | T14 | one `/quotes` request per interval with two views open |
+| **F7** | T17 | no column boundary moves as a price crosses a digit width |
+| **F8** | T17 | rising rows flash green, falling red |
+| **F9** | T15 | one summary block per currency, nothing summed across them |
+| **F10** | T20 | an amount yields a fractional quantity, and the summary updates |
+| **F11** | T18 | a two-character query matches, and omits a known non-match |
+| **F12** | T24 | peers are same-sector and ranked by impact |
+| **F13** | T19 | the four timeframes give visibly different bar counts |
+| **F14** | T16 | five macro tiles, in factor order, updating together |
+
 **The run must be permitted to:** create and write under `backend/` and `frontend/`; run
 `uv python install 3.12`, `uv venv`, `uv pip install`, `uv sync`, `uv run pytest`,
 `uv run python`, each from `backend/`; run `npm install`, `npm run`, `npx ng build`,
@@ -216,7 +247,10 @@ are what stop twelve components each inventing their own greys and spacing.
 - `backend/app/models.py` — the Pydantic response models every route returns — created by **T1**
 - `backend/app/instruments.py` — the instrument universe and its loader — created by **T2**
 - `backend/app/scenarios.py` — the scenario library, its loader and the id enum — created by **T3**
-- `backend/app/sim.py` — the tick engine and the ring buffer — created by **T4**
+- `backend/app/buffer.py` — `Bar`, the bounded ring buffer, and the session-relative queries
+  (`day_change_pct`, `session_volume`) every ranking and display surface reads through —
+  created by **T4**
+- `backend/app/sim.py` — the tick engine — created by **T25**
 - `backend/app/state.py` — the in-process store and the accessors every route reads through — created by **T5**
 - `backend/openapi.json` — the emitted contract the client is generated from — created by **T11**
 - `frontend/src/app/api/` — the generated API client — created by **T12**
@@ -305,33 +339,58 @@ headlines; the id enum's members equal the ids present in the JSON. → serves *
 library size, the baseline's zeroed factors, the headline counts, and that the enum members
 and the JSON ids are the same set. Run before replying, output pasted.
 
-## T4 — Simulation core
+## T4 — Bar and the bounded ring buffer
 
-**Objective:** Implement the tick engine — per-factor returns, per-instrument log returns,
-multiplicative price update, stored per-factor contributions and a bounded ring buffer — so
-that price history exists and every move is attributable.
+**Objective:** Implement the `Bar` record and the bounded per-instrument ring buffer, plus the
+session-relative queries every ranking and display surface reads through, so that the engine
+in **T25** has a history to append to and nothing downstream computes a session figure twice.
+
+*This task and T25 were one task. Splitting them puts the mechanical half — a data structure
+with a capacity rule, testable against literals with no simulation running — on its own
+commit, so a failure in the engine maths leaves it standing.*
+
+**Outcome:** Appending 5001 bars leaves the count at 5000 and the bar that is gone is the
+oldest; `Bar` carries exactly the fields the Definitions name; `day_change_pct` and
+`session_volume` compute against tick index 390 boundaries as the Definitions state, over
+hand-constructed bars rather than simulated ones. → serves **O4**
+**Reads:** nothing — it depends on no other module.
+**Deliverables:**
+- CREATE `backend/app/buffer.py`
+- ADD type `Bar` in `backend/app/buffer.py` — fields exactly as the Definitions section states
+- ADD class `RingBuffer` in `backend/app/buffer.py`
+- ADD function `append(self, bar: Bar) -> None` in `backend/app/buffer.py`
+- ADD function `day_change_pct(self) -> float` in `backend/app/buffer.py`
+- ADD function `session_volume(self) -> float` in `backend/app/buffer.py`
+- CREATE `backend/tests/test_buffer.py`
+
+**Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts the cap and
+the eviction order at both the 5000 and the 5001 boundary, and asserts `day_change_pct` and
+`session_volume` against bars constructed by hand across a known tick-390 boundary, with the
+expected values written as literals taken from the Definitions rather than from the code. Run
+before replying, output pasted.
+
+## T25 — The tick engine
+
+**Objective:** Implement the simulation itself — per-factor returns, per-instrument log
+returns, the multiplicative price update and the stored per-factor contributions — appending
+each tick to the buffer **T4** provides, so that price history exists and every move is
+attributable.
 **Outcome:** Ticking advances every instrument's price by `exp(Σ beta·f + σ·vol_mult·ε)` and
-appends a `Bar` carrying the fields the Definitions name; prices stay strictly positive over
-5000 ticks under every scenario; the buffer holds at most 5000 bars per instrument and
-discards oldest-first; a bar's stored contributions plus its residual equal its log return to
-within 1e-9; two engines built with the same seed produce identical bar sequences.
-→ serves **O1**, **O2**, **O3**, **O4**, **O5**
-**Reads:** `backend/app/instruments.py`, `backend/app/scenarios.py`
+appends one `Bar` per instrument; prices stay strictly positive over 5000 ticks under every
+scenario in the library; a bar's stored contributions plus its residual equal its log return
+to within 1e-9; two engines built with the same seed produce identical bar sequences.
+→ serves **O1**, **O2**, **O3**, **O5**
+**Reads:** `backend/app/buffer.py`, `backend/app/instruments.py`, `backend/app/scenarios.py`
 **Deliverables:**
 - CREATE `backend/app/sim.py`
-- ADD type `Bar` in `backend/app/sim.py` — fields exactly as the Definitions section states
-- ADD class `RingBuffer` in `backend/app/sim.py`
 - ADD class `Engine` in `backend/app/sim.py`
 - ADD function `tick(self) -> None` in `backend/app/sim.py`
-- ADD function `day_change_pct(self, symbol: str) -> float` in `backend/app/sim.py`
-- ADD function `session_volume(self, symbol: str) -> float` in `backend/app/sim.py`
 - CREATE `backend/tests/test_sim.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-clause: positivity over 5000 ticks per scenario, buffer cap and eviction order asserted at
-both the 5000 and the 5001 boundary, contribution reconciliation to 1e-9, identity of two
-same-seed runs, and `day_change_pct` computed against a bar constructed at a known session
-boundary. Run before replying, output pasted.
+clause: positivity over 5000 ticks for each scenario in the library, contribution
+reconciliation to 1e-9, and bar-for-bar identity of two same-seed engines. No price literal is
+asserted, per Constraints. Run before replying, output pasted.
 
 ## T5 — In-process state, fixed-seed backfill and the tick loop
 
@@ -342,7 +401,7 @@ second for the life of the process.
 identical across two calls; the active scenario is baseline; and one call to `advance_once`
 appends exactly one bar to every instrument — this being the same function the background
 loop calls, so the loop's behaviour is the function's. → serves **O1**, **O2**
-**Reads:** `backend/app/sim.py`, `backend/app/main.py`
+**Reads:** `backend/app/sim.py`, `backend/app/buffer.py`, `backend/app/main.py`
 **Deliverables:**
 - CREATE `backend/app/state.py`
 - ADD var `SEED`, `BACKFILL_TICKS`, `SESSION_TICKS`, `STARTING_POSITIONS`, `STARTING_CASH` in `backend/app/state.py`
@@ -375,7 +434,7 @@ unknown `tf` is rejected rather than silently defaulted. → serves **O7**
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
 match excludes a known non-match, that quote order follows request order, that the returned
-day change equals `Engine.day_change_pct` for the same symbol, that each timeframe returns a
+day change equals `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a
 bar count consistent with its aggregation factor, and that an unknown `tf` returns 422. Run
 before replying, output pasted.
 
@@ -419,7 +478,7 @@ macro-driver instruments in factor order. → serves **O11**, **O12**
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_movers.py -v` — asserts each list's
 sort direction pairwise, asserts the gainers and losers sets are disjoint, asserts most active
-ranks on `Engine.session_volume`, asserts `/macro` returns exactly five in factor order, and
+ranks on `RingBuffer.session_volume`, asserts `/macro` returns exactly five in factor order, and
 asserts that activating a scenario and ticking changes the membership of at least one list.
 Run before replying, output pasted.
 
@@ -451,7 +510,7 @@ contributions ordered largest absolute first, a residual, and a templated senten
 factor; the contributions plus residual reconcile with the headline move to within 1e-9.
 `GET /impact/portfolio` returns a per-holding breakdown and is never resolved as a symbol
 lookup. → serves **O5**, **O8**
-**Reads:** `backend/app/state.py`, `backend/app/sim.py`, `backend/app/models.py`
+**Reads:** `backend/app/state.py`, `backend/app/buffer.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/impact.py`
 - ADD function `get_portfolio_impact`, `get_symbol_impact` in `backend/app/routers/impact.py` — `get_portfolio_impact` declared first
@@ -537,10 +596,12 @@ no component source declares a hex colour, a `px` value or a millisecond duratio
 `grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+px|[0-9]+ms' src/app --include='*.ts'` — must return no
 match, and the command is run from `frontend/` so the path resolves. Then paste `tokens.css`
 in full with the computed contrast ratio for body text on the page background, and paste the
-`dependencies` block of `package.json`.
-**Deferred to human review:** (1) the toolbar shows `Simulated feed`; (2) all ten slots render
-as skeletons with no blank areas; (3) the portfolio summary is the topmost slot. Recorded
-`UNVERIFIED`; held for human review before commit.
+`dependencies` block of `package.json`. Then paste `dashboard.component.ts`'s template,
+which must show all ten slot selectors with `portfolio-summary` first, and the shell's
+template, which must contain the literal `Simulated feed`.
+**Deferred to human review:** none — every clause of this task's outcome is established by a
+file this task writes. It is still held for review before commit, because the taste judgement
+the whole visual system rests on is made here and nowhere else.
 
 ## T14 — The shared quote poll
 
