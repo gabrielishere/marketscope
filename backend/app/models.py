@@ -173,6 +173,21 @@ class FactorContribution(BaseModel):
     )
 
 
+class PeerImpact(BaseModel):
+    """One same-sector peer's move since activation.
+
+    A field of `SymbolImpact` rather than a second request: the impact panel ranks
+    same-sector instruments by impact, and without it that component would issue one
+    `/impact/{symbol}` call per peer.
+    """
+
+    symbol: str
+    name: str
+    move_pct: float = Field(
+        description="The peer's move since activation, as a percentage."
+    )
+
+
 class SymbolImpact(BaseModel):
     """`GET /impact/{symbol}` — the move since activation and what drove it."""
 
@@ -194,6 +209,12 @@ class SymbolImpact(BaseModel):
         description=(
             "Impact on the holding in currency terms; null when the symbol is not held. "
             "Always present."
+        )
+    )
+    peers: list[PeerImpact] = Field(
+        description=(
+            "Same-sector peers, ranked by descending absolute move_pct. A field rather "
+            "than a second request."
         )
     )
 

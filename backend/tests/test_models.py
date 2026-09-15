@@ -1,9 +1,16 @@
-"""Each of the fourteen response models rejects a payload with a required field removed.
+"""The fifteen response models carry exactly the contract's fields.
 
-Every payload below is a literal. One case per model: the whole payload must validate,
-and the same payload with the named field removed must be rejected with that field named
-in the error — both sides of the boundary, so a model whose field was made optional fails
-here rather than reaching the generated client as an absent key.
+Two assertions per model, both sides of the boundary:
+
+* its field names equal exactly the set the spec's *Response models* states, so a model
+  with a missing field or an extra one fails here rather than reaching the generated
+  client as a contract change nobody made; and
+* a payload with a required field removed is rejected with that field named in the
+  error, so a field quietly made optional fails too.
+
+Every expected field set and every payload below is a literal taken from *Response
+models*, never read back off the model under test — a test that derives its expectation
+from the code it tests cannot fail.
 
 The field chosen for removal is, where one exists, a field whose requiredness is not
 obvious: `activated_at` and `position_impact` are nullable but have no default, so they
@@ -20,6 +27,7 @@ from app.models import (
     MacroDriver,
     Mover,
     MoversResponse,
+    PeerImpact,
     PortfolioImpact,
     PortfolioResponse,
     PortfolioTotals,
@@ -120,6 +128,12 @@ FACTOR_CONTRIBUTION: dict[str, object] = {
     "sentence": "The oil price rose sharply.",
 }
 
+PEER_IMPACT: dict[str, object] = {
+    "symbol": "OXY",
+    "name": "Occidental Petroleum",
+    "move_pct": 7.44,
+}
+
 SYMBOL_IMPACT: dict[str, object] = {
     "symbol": "XOM",
     "move_pct": 6.18,
@@ -127,12 +141,56 @@ SYMBOL_IMPACT: dict[str, object] = {
     "contributions": [FACTOR_CONTRIBUTION],
     "residual": 0.0075,
     "position_impact": 212.75,
+    "peers": [PEER_IMPACT],
 }
 
 PORTFOLIO_IMPACT: dict[str, object] = {
     "holdings": [SYMBOL_IMPACT],
     "total_impact": 1840.6,
 }
+
+# The field names *Response models* states, written out rather than derived.
+FIELD_SETS: list[tuple[type[BaseModel], set[str]]] = [
+    (Quote, {"symbol", "last", "day_change_pct", "sparkline"}),
+    (Candle, {"t", "open", "high", "low", "close", "volume"}),
+    (SymbolMatch, {"symbol", "name", "sector", "currency", "decimals"}),
+    (Position, {"symbol", "quantity", "avg_entry", "unrealised_pnl"}),
+    (
+        PortfolioTotals,
+        {
+            "value",
+            "cash",
+            "total_return",
+            "total_return_pct",
+            "day_change",
+            "day_change_pct",
+        },
+    ),
+    (PortfolioResponse, {"positions", "totals"}),
+    (Mover, {"symbol", "last", "day_change_pct", "session_volume"}),
+    (MoversResponse, {"gainers", "losers", "most_active"}),
+    (MacroDriver, {"symbol", "name", "factor", "last", "day_change_pct"}),
+    (ScenarioSummary, {"id", "name", "description"}),
+    (ActiveScenario, {"id", "name", "headlines", "activated_at"}),
+    (
+        FactorContribution,
+        {"factor", "exposure", "factor_move_pct", "contribution", "sentence"},
+    ),
+    (PeerImpact, {"symbol", "name", "move_pct"}),
+    (
+        SymbolImpact,
+        {
+            "symbol",
+            "move_pct",
+            "log_return",
+            "contributions",
+            "residual",
+            "position_impact",
+            "peers",
+        },
+    ),
+    (PortfolioImpact, {"holdings", "total_impact"}),
+]
 
 # (model, complete payload, the required field removed)
 CASES: list[tuple[type[BaseModel], dict[str, object], str]] = [
@@ -148,15 +206,29 @@ CASES: list[tuple[type[BaseModel], dict[str, object], str]] = [
     (ScenarioSummary, SCENARIO_SUMMARY, "description"),
     (ActiveScenario, ACTIVE_SCENARIO, "activated_at"),
     (FactorContribution, FACTOR_CONTRIBUTION, "sentence"),
+    (PeerImpact, PEER_IMPACT, "move_pct"),
     (SymbolImpact, SYMBOL_IMPACT, "position_impact"),
     (PortfolioImpact, PORTFOLIO_IMPACT, "holdings"),
 ]
 
 
-def test_every_named_model_has_a_case() -> None:
-    """Fourteen models are named by the task; fourteen cases cover them."""
-    assert len(CASES) == 14
-    assert len({model for model, _, _ in CASES}) == 14
+def test_every_named_model_is_covered_once() -> None:
+    """Fifteen models are named by the task; fifteen cases of each kind cover them."""
+    assert len(CASES) == 15
+    assert len({model for model, _, _ in CASES}) == 15
+    assert len(FIELD_SETS) == 15
+    assert len({model for model, _ in FIELD_SETS}) == 15
+
+
+@pytest.mark.parametrize(
+    ("model", "expected_fields"),
+    FIELD_SETS,
+    ids=[model.__name__ for model, _ in FIELD_SETS],
+)
+def test_model_carries_exactly_the_stated_fields(
+    model: type[BaseModel], expected_fields: set[str]
+) -> None:
+    assert set(model.model_fields) == expected_fields
 
 
 @pytest.mark.parametrize(
