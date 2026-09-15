@@ -39,8 +39,10 @@ non-technical audience in a single view.
   1.0 to its own factor and 0.0 to the other four.
 - **O13** The Angular client is generated from the emitted schema and committed, and
   `ng build` succeeds with the backend not running.
-- **O14** The watchlist and the detail view share one poll: exactly one `/quotes` request is
-  in flight per interval however many components are subscribed.
+- **O14** One `/quotes` request is in flight per interval for the whole application — the
+  service polls every symbol in the universe on a single timer and subscribers select from
+  the result, so the count does not depend on how many components are mounted, which route is
+  showing, or which symbols each one wants.
 - **O15** Selecting a scenario issues the POST and refreshes quotes without waiting out the
   poll interval.
 - **O16** The string `Simulated feed` is present in the header on every view.
@@ -69,8 +71,16 @@ non-technical audience in a single view.
 
 # Constraints
 
-Quoted from `app-features.md` unless marked. Decisions taken at intake are marked
-**[decided]** and carry no quotation because the input does not state them.
+**This spec is the source of truth. `app-features.md` is the input it was read from, and it
+is not maintained.** Where the two disagree, this document wins and the brief is stale — it
+has no marker saying so, so anyone sent back to it should be told. The known divergence is
+the markets table, marked below.
+
+Lines here are quoted from `app-features.md` unless marked. Decisions taken at intake are
+marked **[decided]**; requirements added after intake, which the brief therefore does not
+contain, are marked **[added after intake]**. Both carry no quotation, and the marker is the
+point: a plausible addition written in the same typeface as a quoted one is indistinguishable
+from it, and nobody will ever think to ask.
 
 - "**Backend:** FastAPI (Python), Pydantic response models, no database" — `app-features.md:9`
 - "**Frontend:** Angular (standalone components, RxJS, `HttpClient`)" — `app-features.md:10`
@@ -109,6 +119,14 @@ Quoted from `app-features.md` unless marked. Decisions taken at intake are marke
   value, return and today's change are reported as one set per currency and never summed
   across currencies. The trade amount is in the instrument's native currency.
 - **[decided]** The optional feature is the headlines ticker. Price alerts are out of scope.
+- **[added after intake]** **The markets table is a requirement, not an extra.** The brief
+  describes only a curated watchlist (`app-features.md:28`) and contains no full-universe
+  view; O24, O25 and T26 were added here and are the reason this spec and the brief diverge.
+  Three things follow, which is why this is a marked requirement rather than a quiet
+  addition: the universe size and its sector balance become visible and so are pinned in T2;
+  the shared poll must cover every symbol rather than a subscriber's subset, which rewrites
+  O14; and the dashboard watchlist becomes a genuinely curated subset, which means it needs a
+  starting state it never needed when it was the only list.
 - **[decided]** The PRNG seed is a fixed constant and the starting portfolio is fixed, so a
   run is reproducible.
 - **[decided]** Backend outcomes are evidenced by `pytest` and commit at verification, per the
@@ -322,11 +340,17 @@ models rejects a payload with a required field removed. Run before replying, out
 
 **Objective:** Define the instrument universe as JSON and load it at startup, so that
 scenarios have something to act on and betas can be tuned without touching code.
-**Outcome:** The loader returns between 30 and 45 instruments spanning at least 6 sectors;
-every instrument carries a currency, a decimal-places value and a beta for each of the five
-factors; every beta is one of {-1.0, -0.5, 0.0, 0.5, 1.0}; and exactly five instruments are
-marked as macro drivers with exposure 1.0 to their own factor and 0.0 to the other four.
-→ serves **O12**
+**Outcome:** The loader returns 40 equities across exactly 7 sectors with **at least 4 in
+every sector**, plus the 5 macro drivers, for 45 instruments total; every instrument carries
+a name, a sector, a currency, a decimal-places value and a beta for each of the five factors;
+every beta is one of {-1.0, -0.5, 0.0, 0.5, 1.0}; each macro driver has exposure 1.0 to its
+own factor and 0.0 to the other four; and **at least two sectors contain a pair of
+instruments whose oil betas have opposite signs**. → serves **O12**, **O25**
+
+*The per-sector minimum and the opposing-beta pair exist because the markets table groups by
+sector. A sector holding one row renders as a header with nothing under it and reads as a
+bug, and a sector whose members all move together makes the table look like a sector model —
+which `app-features.md:172-175` is explicit it is not.*
 **Reads:** `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/data/instruments.json`
@@ -336,9 +360,10 @@ marked as macro drivers with exposure 1.0 to their own factor and 0.0 to the oth
 - CREATE `backend/tests/test_instruments.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_instruments.py -v` — asserts the
-count bounds, the sector count, that every instrument has a currency and a decimal-places
-value, the beta value set, and the five macro drivers' exposure rows. Run before replying,
-output pasted.
+counts — 40 equities, 7 sectors, no sector below 4, 45 total — that every instrument has a
+name, sector, currency and decimal-places value, the beta value set, the five macro drivers'
+exposure rows, and that at least two sectors contain a pair with opposite-signed oil betas.
+Run before replying, output pasted.
 
 ## T3 — Scenario library
 
@@ -636,21 +661,31 @@ the whole visual system rests on is made here and nowhere else.
 
 ## T14 — The shared quote poll
 
-**Objective:** Build the single `QuoteService` that polls `/quotes` on an RxJS interval and
-is shared by every subscriber, and expose a method to force an immediate refresh.
-**Outcome:** However many components subscribe, exactly one `/quotes` request is in flight
-per interval; `refreshNow()` issues a request without waiting out the interval. → serves
-**O14**, **O15**
+**Objective:** Build the single `QuoteService` that polls every symbol in the universe on one
+RxJS interval and lets subscribers select from the result, and expose a method to force an
+immediate refresh.
+
+*It polls the universe rather than each subscriber's list because the dashboard wants a
+handful and the markets table wants all forty. A service that polls per subscriber set
+satisfies "one request per subscriber" and still issues two, which is the defect the previous
+wording of O14 could not catch.*
+
+**Outcome:** One `/quotes` request goes out per interval regardless of how many components
+are mounted or which route is showing; `quotes$(symbols)` returns a selection over that one
+stream and issues no request of its own; `refreshNow()` issues a request without waiting out
+the interval. → serves **O14**, **O15**
 **Reads:** `frontend/src/app/api/`
 **Deliverables:**
 - CREATE `frontend/src/app/core/quote.service.ts`
 - ADD class `QuoteService` in `frontend/src/app/core/quote.service.ts`
-- ADD function `quotes$(symbols: string[])`, `refreshNow()` in `frontend/src/app/core/quote.service.ts`
+- ADD function `allQuotes$()` in `frontend/src/app/core/quote.service.ts` — the single polled stream, every symbol
+- ADD function `quotes$(symbols: string[])` in `frontend/src/app/core/quote.service.ts` — a selection over `allQuotes$()`, never a new request
+- ADD function `refreshNow()` in `frontend/src/app/core/quote.service.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste `quote.service.ts`
-in full and name the operator that makes the stream shared — a multicasting operator must be
-present, and a per-subscriber `interval` without one is the defect this evidence exists to
-expose.
+in full and name the operator that multicasts the stream. Exactly one `interval` may appear
+in the file, and `quotes$` must derive from `allQuotes$()` rather than call the API — a second
+`interval`, or an API call inside `quotes$`, is the defect this evidence exists to expose.
 **Deferred to human review:** with the watchlist and the detail view both open, the network
 panel shows one `/quotes` request per interval, not two; and selecting a scenario produces a
 `/quotes` request sooner than the interval. Recorded `UNVERIFIED`; held for human review
@@ -689,16 +724,23 @@ Recorded `UNVERIFIED`; held for human review before commit.
 ## T17 — Watchlist
 
 **Objective:** Fill the watchlist slot — symbol, last price, day change %, sparkline — off
-the shared poll, flashing green or red on change.
+the shared poll, flashing green or red on change, and give it a starting set so the dashboard
+is not blank on first load.
+
+*It needs one because the markets table took the full universe. Before that the watchlist was
+the only list and could not be empty; now it is a curated subset, and nothing has curated it
+when the app opens.*
 **Outcome:** Each row shows the four fields at a fixed row height, with price and change in
 fixed-width decimal-aligned columns that do not move as values change width; a row whose
 price rose since the previous poll flashes green and one that fell flashes red, for a single
 transition of 120–300ms suppressed under `prefers-reduced-motion`; the sparkline redraws on
-each poll without changing its box. → serves **O14**, **O22**
+each poll without changing its box. On first load the list is the symbols held in
+`GET /portfolio` plus `WATCHLIST_EXTRAS`, and it is never empty. → serves **O14**, **O22**
 **Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`,
 `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/watchlist/watchlist.component.ts`
+- ADD var `WATCHLIST_EXTRAS` in `frontend/src/app/features/watchlist/watchlist.component.ts` — three symbols from sectors that move *against* the holdings, so the dashboard shows disagreement and not only the markets tab
 - CREATE `frontend/src/app/features/watchlist/sparkline.component.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the row styles,
