@@ -1,0 +1,44 @@
+{
+  "seq": 7,
+  "spec": "trading-demo-backend",
+  "task": "T2",
+  "dispatched": true,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T2-instrument-universe.md",
+
+  "started": "2026-09-15T23:48:51Z",
+  "ended": "2026-09-15T23:55:36Z",
+  "duration_s": 405,
+
+  "model": { "requested": "claude-opus-5", "actual": "claude-opus-5" },
+  "usage": { "turns": 31, "input": 62, "output": 35487,
+             "cache_write": 171994, "cache_read": 1306114 },
+
+  "gate": { "passed": true, "defect": null },
+
+  "deliverables": [
+    { "path": "backend/app/data/instruments.json", "found": true, "symbols": [] },
+    { "path": "backend/app/instruments.py", "found": true,
+      "symbols": [
+        { "name": "Instrument", "found": true, "line": 60 },
+        { "name": "load_instruments", "found": true, "line": 124 }
+      ] },
+    { "path": "backend/tests/test_instruments.py", "found": true, "symbols": [] }
+  ],
+
+  "evidence": [
+    { "command": "cd backend && uv run pytest tests/test_instruments.py -v",
+      "exit": 0, "summary": "61 passed in 0.03s", "verbatim": null },
+    { "command": "cd backend && uv run pytest tests/ -q",
+      "exit": 0, "summary": "120 passed, 2 warnings in 0.20s (+61 from 59; no earlier test regressed)", "verbatim": null },
+    { "command": "cd backend && uv run python -c \"<read instruments.json and check every outcome clause directly>\"",
+      "exit": 0, "summary": "orchestrator inspection of the JSON, not the loader: 45 total, 40 equities, 5 macro drivers; equity sectors exactly 7 — Technology 6, Financials 6, Energy 6, Health Care 5, Consumer Discretionary 6, Industrials 6, Utilities 5, none below 4; every one of the 45 beta maps keyed by exactly ['market','rates','oil','usd','credit'] in that order, zero exceptions; beta values used are exactly {-1.0,-0.5,0.0,0.5,1.0} with none outside; all five macro drivers carry 1.0 to their own factor and 0.0 to the other four; sectors holding an opposing-signed oil pair are Energy, Consumer Discretionary and Industrials", "verbatim": null }
+  ],
+
+  "status": { "run": "DONE", "deliverables": "MADE", "outcome": "PASSED" },
+  "commits": { "deliverables": "e9f88dd", "log": null },
+  "escalations": [
+    "Instrument carries one field beyond those the Outcome names: start_price: float, which the tick engine needs a level to start from. No test asserts a price level; the only price assertion is start_price > 0, the property O3 states.",
+    "The five macro drivers (SPX, US10Y, WTI, DXY, CDXHY) carry sector \"Macro\", deliberately outside the seven, so counting sectors over the whole universe gives 8 and over the equities gives exactly 7 as the Outcome states.",
+    "Orchestrator note, not from the implementor: the prompt's Evidenced-by names 'the beta value set' but no completeness assertion, so the Outcome clause 'a beta for each of the five factors' was not explicitly evidenced by the prompt. It is discharged in fact — test_every_instrument_is_keyed_by_exactly_the_five_factors exists and I verified all 45 beta maps against the JSON myself — but the prompt did not require it and a thinner test would have passed the stated evidence."
+  ]
+}
