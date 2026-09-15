@@ -406,7 +406,7 @@ Run before replying, output pasted.
 **Objective:** Give every route an explicit operation id and a tag, pin the schema version the
 generator accepts, and emit the schema to a file by importing the app, so the client generator
 needs no running server.
-**Outcome:** `backend/openapi.json` exists on disk and declares `"openapi": "3.0.2"`; all 13
+**Outcome:** `backend/openapi.json` exists on disk and declares `"openapi": "3.0.2"`; all 12
 operations carry an explicit `operationId` and at least one tag; no operation id matches the
 FastAPI default form `<name>_<path>_<method>`. → serves **O7**
 **Reads:** every router created by T6–T10, `backend/app/main.py`
