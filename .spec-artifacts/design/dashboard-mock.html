@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en" data-scenario="oil-supply-shock">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading demo — design reference</title>
+
+<!--
+  DESIGN REFERENCE for spec `trading-demo`.
+
+  This file is the approved visual target. T13 derives
+  `frontend/src/styles/tokens.css` from the :root block below — every custom
+  property here becomes a token there, with the same name and the same value.
+  No hex colour, px value or millisecond duration appears anywhere in this file
+  outside that block, which is the same rule O23 places on component source.
+
+  State shown: scenario `oil-supply-shock` active. Energy up, travel down,
+  activation marker on the detail chart, scenario headlines in the ticker.
+-->
+
+<style>
+/* ── TOKENS ─────────────────────────────────────────────────────────────────
+   The only place a raw value is written. T13 copies this block verbatim.     */
+:root {
+  /* neutral ramp — surfaces dark to light, then text */
+  --n-0:  #0a0c10;   /* page ground                                          */
+  --n-1:  #12151b;   /* panel surface                                        */
+  --n-2:  #191e26;   /* raised surface, table header, input                  */
+  --n-3:  #232a34;   /* hairline border                                      */
+  --n-4:  #333c49;   /* border, emphasised                                   */
+  --n-5:  #6b7684;   /* text, de-emphasised — 4.6:1 on --n-0                 */
+  --n-6:  #9aa4b2;   /* text, secondary — 8.1:1 on --n-0                     */
+  --n-7:  #e6eaf0;   /* text, primary — 15.8:1 on --n-0                      */
+
+  /* signal — direction only, never decoration */
+  --sig-up:      #3fb950;
+  --sig-down:    #f85149;
+  --sig-up-bg:   #10391d;
+  --sig-down-bg: #3d1618;
+
+  /* spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* type scale */
+  --ts-1: 11px;
+  --ts-2: 12px;
+  --ts-3: 13px;
+  --ts-4: 15px;
+  --ts-5: 18px;
+  --ts-6: 24px;
+
+  /* radii */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 10px;
+
+  /* motion — the row flash, and nothing longer */
+  --mo-flash: 160ms;
+
+  /* numeric column widths — fixed, so no digit change moves a boundary */
+  --w-price:  88px;
+  --w-change: 76px;
+  --w-vol:    92px;
+
+  /* fixed row height, so a poll never reflows a list */
+  --h-row: 34px;
+
+  --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ── RESET ───────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--n-0);
+  color: var(--n-7);
+  font: var(--ts-3)/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+/* Every figure is tabular. Non-negotiable — it is what stops column jitter. */
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ts-3);
+}
+.up   { color: var(--sig-up); }
+.down { color: var(--sig-down); }
+
+/* ── TOOLBAR ─────────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex; align-items: center; gap: var(--sp-5);
+  height: 52px; padding: 0 var(--sp-5);
+  background: var(--n-1);
+  border-bottom: 1px solid var(--n-3);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { font-size: var(--ts-4); font-weight: 600; letter-spacing: -0.01em; }
+.tabs { display: flex; gap: var(--sp-1); }
+.tab {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-1);
+  color: var(--n-6); font-size: var(--ts-3); font-weight: 500;
+  background: none; border: 0; cursor: pointer; font-family: inherit;
+}
+.tab[aria-selected="true"] { background: var(--n-2); color: var(--n-7); }
+.toolbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--sig-down-bg); color: var(--n-7);
+  border: 1px solid var(--n-4); border-radius: var(--r-3);
+  font-size: var(--ts-2); font-weight: 500;
+}
+.chip::before {
+  content: ""; width: var(--sp-2); height: var(--sp-2);
+  border-radius: 50%; background: var(--sig-down);
+}
+/* Honesty label. Present on every view — it is in the toolbar, outside the
+   outlet, so no route can render without it. */
+.sim { font-size: var(--ts-2); color: var(--n-5); }
+
+/* ── TICKER ──────────────────────────────────────────────────────────────── */
+.ticker {
+  display: flex; align-items: center; gap: var(--sp-4);
+  height: 32px; padding: 0 var(--sp-5); overflow: hidden;
+  background: var(--n-0);
+  border-bottom: 1px solid var(--n-3);
+  font-size: var(--ts-2); color: var(--n-6);
+}
+.ticker b { color: var(--n-7); font-weight: 600; }
+.ticker .sep { color: var(--n-4); }
+
+/* ── LAYOUT ──────────────────────────────────────────────────────────────── */
+.view { padding: var(--sp-5); display: grid; gap: var(--sp-4); }
+.view[hidden] { display: none; }
+.cols {
+  display: grid; gap: var(--sp-4);
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+}
+@media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
+.stack { display: grid; gap: var(--sp-4); align-content: start; }
+
+.panel {
+  background: var(--n-1);
+  border: 1px solid var(--n-3);
+  border-radius: var(--r-2);
+  overflow: hidden;
+}
+.panel > h2 {
+  font-size: var(--ts-1); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--n-5);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--n-3);
+}
+.panel-body { padding: var(--sp-4); }
+
+/* ── PORTFOLIO SUMMARY — first element of the dashboard ──────────────────── */
+.summary { display: flex; gap: var(--sp-6); padding: var(--sp-4) var(--sp-5); flex-wrap: wrap; }
+.summary .figure { display: grid; gap: var(--sp-1); }
+.summary .label { font-size: var(--ts-1); color: var(--n-5); text-transform: uppercase; letter-spacing: 0.06em; }
+.summary .value { font-size: var(--ts-6); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.summary .value.sub { font-size: var(--ts-5); }
+
+/* ── MACRO STRIP — five tiles, one per factor, in factor order ───────────── */
+.macro { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--sp-3); }
+@media (max-width: 760px) { .macro { grid-template-columns: repeat(2, 1fr); } }
+.tile {
+  background: var(--n-1); border: 1px solid var(--n-3); border-radius: var(--r-2);
+  padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-1);
+}
+.tile .name { font-size: var(--ts-1); color: var(--n-5); text-transform: uppercase; letter-spacing: 0.06em; }
+.tile .px { font-size: var(--ts-5); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+/* ── LISTS ───────────────────────────────────────────────────────────────── */
+.row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  height: var(--h-row); padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--n-3);
+}
+.row:last-child { border-bottom: 0; }
+.row .sym { width: 56px; font-weight: 600; font-size: var(--ts-3); }
+.row .spark { width: 56px; margin-left: auto; }
+.row .px { width: var(--w-price); text-align: right; }
+.row .ch { width: var(--w-change); text-align: right; }
+/* The flash. One transition, suppressed under reduced motion. */
+.row.flash-up   { animation: flashUp   var(--mo-flash) ease-out; }
+.row.flash-down { animation: flashDown var(--mo-flash) ease-out; }
+@keyframes flashUp   { from { background: var(--sig-up-bg); }   to { background: transparent; } }
+@keyframes flashDown { from { background: var(--sig-down-bg); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .row.flash-up, .row.flash-down { animation: none; }
+}
+
+/* ── SEARCH ──────────────────────────────────────────────────────────────── */
+.search { padding: var(--sp-3) var(--sp-4); }
+.search input {
+  width: 100%; height: 32px; padding: 0 var(--sp-3);
+  background: var(--n-2); color: var(--n-7);
+  border: 1px solid var(--n-4); border-radius: var(--r-1);
+  font: var(--ts-3) var(--font);
+}
+.search input::placeholder { color: var(--n-5); }
+
+/* ── DETAIL CHART ────────────────────────────────────────────────────────── */
+.chart-head {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--n-3);
+}
+.chart-head .sym { font-size: var(--ts-5); font-weight: 600; }
+.timeframes { margin-left: auto; display: flex; gap: var(--sp-1); }
+.tf {
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--r-1);
+  background: none; border: 1px solid transparent; color: var(--n-5);
+  font: var(--ts-2) var(--font); cursor: pointer;
+}
+.tf[aria-pressed="true"] { background: var(--n-2); border-color: var(--n-4); color: var(--n-7); }
+.chart { display: block; width: 100%; height: 190px; }
+
+/* ── MOVERS ──────────────────────────────────────────────────────────────── */
+.movers-group + .movers-group { border-top: 1px solid var(--n-3); }
+.movers-group h3 {
+  font-size: var(--ts-1); color: var(--n-5); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+
+/* ── SCENARIO SELECT ─────────────────────────────────────────────────────── */
+.select-wrap { padding: var(--sp-3) var(--sp-4); }
+select {
+  width: 100%; height: 32px; padding: 0 var(--sp-2);
+  background: var(--n-2); color: var(--n-7);
+  border: 1px solid var(--n-4); border-radius: var(--r-1);
+  font: var(--ts-3) var(--font);
+}
+
+/* ── TRADE TICKET ────────────────────────────────────────────────────────── */
+.ticket { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.field { display: grid; gap: var(--sp-2); }
+.field label { font-size: var(--ts-1); color: var(--n-5); text-transform: uppercase; letter-spacing: 0.06em; }
+.amount { display: flex; align-items: center; gap: var(--sp-2); }
+.amount .cur { color: var(--n-6); font-size: var(--ts-4); }
+.amount input {
+  flex: 1; height: 34px; padding: 0 var(--sp-3);
+  background: var(--n-2); color: var(--n-7);
+  border: 1px solid var(--n-4); border-radius: var(--r-1);
+  font: var(--ts-4) var(--font-num); font-variant-numeric: tabular-nums;
+}
+.derived {
+  display: flex; justify-content: space-between;
+  font-size: var(--ts-2); color: var(--n-6);
+  padding-top: var(--sp-1);
+}
+.btn {
+  height: 34px; border: 0; border-radius: var(--r-1);
+  background: var(--n-7); color: var(--n-0);
+  font: 600 var(--ts-3) var(--font); cursor: pointer;
+}
+
+/* ── IMPACT PANEL — plain language first, detail behind disclosure ───────── */
+.impact-head { padding: var(--sp-4) var(--sp-4) var(--sp-3); }
+.impact-move { font-size: var(--ts-6); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.impact-sentences { display: grid; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-3); }
+.impact-sentences li { list-style: none; font-size: var(--ts-3); color: var(--n-6); }
+.impact-sentences b { color: var(--n-7); font-weight: 600; }
+/* At most three bars in the default view. Capped in the template, not by the
+   data happening to be short. */
+.bars { display: grid; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-4); }
+.bar { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: var(--sp-3); }
+.bar .bl { font-size: var(--ts-2); color: var(--n-5); }
+.bar .track { height: var(--sp-2); background: var(--n-2); border-radius: var(--r-1); position: relative; }
+.bar .fill { position: absolute; top: 0; bottom: 0; border-radius: var(--r-1); }
+.bar .fill.pos { left: 50%; background: var(--sig-up); }
+.bar .fill.neg { right: 50%; background: var(--sig-down); }
+details.detail { border-top: 1px solid var(--n-3); }
+details.detail summary {
+  padding: var(--sp-3) var(--sp-4); cursor: pointer;
+  font-size: var(--ts-2); color: var(--n-6);
+}
+.attrib { width: 100%; border-collapse: collapse; }
+.attrib th, .attrib td {
+  padding: var(--sp-2) var(--sp-4); font-size: var(--ts-2);
+  border-top: 1px solid var(--n-3); text-align: right;
+}
+.attrib th:first-child, .attrib td:first-child { text-align: left; color: var(--n-6); }
+
+/* ── MARKETS TABLE ───────────────────────────────────────────────────────── */
+.markets-pane {
+  background: var(--n-1); border: 1px solid var(--n-3); border-radius: var(--r-2);
+  /* Fixed height, body scrolls inside. The pane does not resize on poll and
+     the scroll position survives it. */
+  height: calc(100vh - 210px);
+  overflow: auto;
+}
+.mkt { width: 100%; border-collapse: collapse; }
+.mkt thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--n-2);
+  font-size: var(--ts-1); font-weight: 600; color: var(--n-5);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  text-align: right; padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--n-3);
+  white-space: nowrap;
+}
+.mkt thead th:first-child, .mkt thead th:nth-child(2) { text-align: left; }
+.mkt thead th[aria-sort] { color: var(--n-7); }
+.mkt tbody td {
+  height: var(--h-row); padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--n-3);
+  text-align: right; white-space: nowrap;
+}
+.mkt tbody td:first-child, .mkt tbody td:nth-child(2) { text-align: left; }
+.mkt .sector-head td {
+  position: sticky; top: 37px; z-index: 1;
+  background: var(--n-2);
+  font-size: var(--ts-2); font-weight: 600;
+  border-top: 1px solid var(--n-4);
+}
+.mkt .sector-head .agg { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.mkt .sym { font-weight: 600; }
+.mkt .name { color: var(--n-6); }
+.col-price  { width: var(--w-price); }
+.col-change { width: var(--w-change); }
+.col-vol    { width: var(--w-vol); }
+</style>
+</head>
+<body>
+
+<!-- Toolbar and ticker sit OUTSIDE the router outlet, so no route can render
+     without the tabs, the scenario chip or the `Simulated feed` label. -->
+<header class="toolbar">
+  <span class="brand">Marketscope</span>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true"  data-view="dashboard">Dashboard</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="markets">Markets</button>
+  </nav>
+  <div class="toolbar-right">
+    <span class="chip">Oil supply shock</span>
+    <span class="sim">Simulated feed</span>
+  </div>
+</header>
+
+<div class="ticker">
+  <b>Brent jumps 9% as pipeline outage cuts supply</b>
+  <span class="sep">•</span>
+  <span>Airlines slide on fuel cost fears</span>
+  <span class="sep">•</span>
+  <span>Energy majors lead the index higher</span>
+</div>
+
+<!-- ══ DASHBOARD ═══════════════════════════════════════════════════════════ -->
+<main class="view" id="dashboard">
+
+  <!-- Portfolio summary renders above every other element. -->
+  <section class="panel">
+    <div class="summary">
+      <div class="figure">
+        <span class="label">Portfolio value</span>
+        <span class="value">$248,310.44</span>
+      </div>
+      <div class="figure">
+        <span class="label">Total return</span>
+        <span class="value sub up">+$18,204.10 &nbsp;+7.91%</span>
+      </div>
+      <div class="figure">
+        <span class="label">Today</span>
+        <span class="value sub up">+$3,891.20 &nbsp;+1.59%</span>
+      </div>
+      <div class="figure">
+        <span class="label">Cash</span>
+        <span class="value sub">$12,480.00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Five macro drivers, one per factor, in factor order. -->
+  <section class="macro">
+    <div class="tile"><span class="name">Market</span><span class="px num">4,918.22</span><span class="num up">+0.42%</span></div>
+    <div class="tile"><span class="name">Rates</span><span class="px num">98.14</span><span class="num down">&minus;0.31%</span></div>
+    <div class="tile"><span class="name">Oil</span><span class="px num">94.60</span><span class="num up">+9.12%</span></div>
+    <div class="tile"><span class="name">USD</span><span class="px num">104.88</span><span class="num up">+0.58%</span></div>
+    <div class="tile"><span class="name">Credit</span><span class="px num">76.35</span><span class="num down">&minus;0.74%</span></div>
+  </section>
+
+  <div class="cols">
+
+    <!-- ── left ── -->
+    <div class="stack">
+      <section class="panel">
+        <h2>Watchlist</h2>
+        <div class="row flash-up">
+          <span class="sym">XOM</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 14 L9 13 L18 12 L27 9 L36 7 L45 4 L56 2" stroke="var(--sig-up)" stroke-width="1.5"/></svg>
+          <span class="px num">118.42</span><span class="ch num up">+6.18%</span>
+        </div>
+        <div class="row flash-up">
+          <span class="sym">CVX</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 13 L9 13 L18 11 L27 10 L36 7 L45 5 L56 3" stroke="var(--sig-up)" stroke-width="1.5"/></svg>
+          <span class="px num">162.07</span><span class="ch num up">+5.44%</span>
+        </div>
+        <div class="row flash-down">
+          <span class="sym">DAL</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 4 L9 5 L18 7 L27 9 L36 12 L45 13 L56 15" stroke="var(--sig-down)" stroke-width="1.5"/></svg>
+          <span class="px num">38.91</span><span class="ch num down">&minus;4.82%</span>
+        </div>
+        <div class="row">
+          <span class="sym">AAPL</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 9 L9 8 L18 10 L27 9 L36 8 L45 9 L56 8" stroke="var(--n-5)" stroke-width="1.5"/></svg>
+          <span class="px num">227.13</span><span class="ch num up">+0.21%</span>
+        </div>
+        <div class="row flash-down">
+          <span class="sym">UAL</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 5 L9 6 L18 8 L27 10 L36 11 L45 13 L56 14" stroke="var(--sig-down)" stroke-width="1.5"/></svg>
+          <span class="px num">52.66</span><span class="ch num down">&minus;5.13%</span>
+        </div>
+        <div class="row">
+          <span class="sym">JPM</span>
+          <svg class="spark" viewBox="0 0 56 18" fill="none"><path d="M0 10 L9 9 L18 9 L27 8 L36 9 L45 7 L56 7" stroke="var(--n-5)" stroke-width="1.5"/></svg>
+          <span class="px num">214.55</span><span class="ch num up">+0.64%</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Search</h2>
+        <div class="search"><input type="text" placeholder="Symbol or name…" value="oc"></div>
+        <div class="row"><span class="sym">OXY</span><span class="name" style="color:var(--n-6);font-size:var(--ts-2)">Occidental Petroleum</span></div>
+        <div class="row"><span class="sym">CCL</span><span class="name" style="color:var(--n-6);font-size:var(--ts-2)">Carnival Corp</span></div>
+      </section>
+    </div>
+
+    <!-- ── centre ── -->
+    <div class="stack">
+      <section class="panel">
+        <div class="chart-head">
+          <span class="sym">XOM</span>
+          <span class="num up" style="font-size:var(--ts-4)">118.42 &nbsp;+6.18%</span>
+          <div class="timeframes">
+            <button class="tf" aria-pressed="false">1m</button>
+            <button class="tf" aria-pressed="true">5m</button>
+            <button class="tf" aria-pressed="false">15m</button>
+            <button class="tf" aria-pressed="false">Session</button>
+          </div>
+        </div>
+        <svg class="chart" viewBox="0 0 600 190" preserveAspectRatio="none">
+          <line x1="0" y1="150" x2="600" y2="150" stroke="var(--n-3)"/>
+          <line x1="0" y1="100" x2="600" y2="100" stroke="var(--n-3)"/>
+          <line x1="0" y1="50"  x2="600" y2="50"  stroke="var(--n-3)"/>
+          <path d="M0 132 L40 130 L80 134 L120 129 L160 131 L200 127 L240 130 L280 128
+                   L320 126 L360 92 L400 74 L440 66 L480 52 L520 44 L560 34 L600 28"
+                fill="none" stroke="var(--sig-up)" stroke-width="2"/>
+          <!-- Activation marker. Driven by `activated_at` being non-null, not by a
+               scenario merely being selected. Absent at baseline. -->
+          <line x1="340" y1="8" x2="340" y2="182" stroke="var(--n-6)" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="348" y="20" fill="var(--n-6)" font-size="11" font-family="ui-sans-serif, sans-serif">Oil supply shock</text>
+        </svg>
+      </section>
+
+      <section class="panel">
+        <h2>Why it moved</h2>
+        <div class="impact-head"><span class="impact-move up">+6.18%</span></div>
+        <!-- Default view: plain language, at most three bars, and no exposure
+             value such as `oil beta -0.9` anywhere outside the disclosure. -->
+        <ul class="impact-sentences">
+          <li>Most of the move came from <b>the oil price rising sharply</b>.</li>
+          <li>A <b>stronger dollar</b> held it back slightly.</li>
+          <li>The rest is <b>specific to this company</b>.</li>
+        </ul>
+        <div class="bars">
+          <div class="bar"><span class="bl">Oil</span><span class="track"><span class="fill pos" style="width:42%"></span></span></div>
+          <div class="bar"><span class="bl">USD</span><span class="track"><span class="fill neg" style="width:9%"></span></span></div>
+          <div class="bar"><span class="bl">Market</span><span class="track"><span class="fill pos" style="width:6%"></span></span></div>
+        </div>
+        <details class="detail">
+          <summary>Full attribution</summary>
+          <table class="attrib">
+            <tr><th>Factor</th><th>Exposure</th><th>Factor move</th><th>Contribution</th></tr>
+            <tr><td>Oil</td><td class="num">+1.0</td><td class="num">+9.12%</td><td class="num up">+5.24%</td></tr>
+            <tr><td>USD</td><td class="num">&minus;0.5</td><td class="num">+0.58%</td><td class="num down">&minus;1.09%</td></tr>
+            <tr><td>Market</td><td class="num">+0.5</td><td class="num">+0.42%</td><td class="num up">+0.74%</td></tr>
+            <tr><td>Rates</td><td class="num">0.0</td><td class="num">&minus;0.31%</td><td class="num">0.00%</td></tr>
+            <tr><td>Credit</td><td class="num">0.0</td><td class="num">&minus;0.74%</td><td class="num">0.00%</td></tr>
+            <tr><td>Residual</td><td class="num">—</td><td class="num">—</td><td class="num up">+1.29%</td></tr>
+          </table>
+        </details>
+      </section>
+    </div>
+
+    <!-- ── right ── -->
+    <div class="stack">
+      <section class="panel">
+        <h2>Scenario</h2>
+        <div class="select-wrap">
+          <select>
+            <option>Reset to normal</option>
+            <option selected>Oil supply shock</option>
+            <option>Rate shock</option>
+            <option>Credit crunch</option>
+            <option>Dollar surge</option>
+            <option>Tech rally</option>
+            <option>Broad selloff</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Movers</h2>
+        <div class="movers-group">
+          <h3>Gainers</h3>
+          <div class="row"><span class="sym">OXY</span><span class="px num">71.20</span><span class="ch num up">+7.44%</span></div>
+          <div class="row"><span class="sym">XOM</span><span class="px num">118.42</span><span class="ch num up">+6.18%</span></div>
+          <div class="row"><span class="sym">CVX</span><span class="px num">162.07</span><span class="ch num up">+5.44%</span></div>
+        </div>
+        <div class="movers-group">
+          <h3>Losers</h3>
+          <div class="row"><span class="sym">UAL</span><span class="px num">52.66</span><span class="ch num down">&minus;5.13%</span></div>
+          <div class="row"><span class="sym">DAL</span><span class="px num">38.91</span><span class="ch num down">&minus;4.82%</span></div>
+          <div class="row"><span class="sym">CCL</span><span class="px num">18.04</span><span class="ch num down">&minus;3.97%</span></div>
+        </div>
+        <div class="movers-group">
+          <h3>Most active</h3>
+          <div class="row"><span class="sym">XOM</span><span class="px num">118.42</span><span class="ch num">2.41M</span></div>
+          <div class="row"><span class="sym">AAPL</span><span class="px num">227.13</span><span class="ch num">1.98M</span></div>
+          <div class="row"><span class="sym">UAL</span><span class="px num">52.66</span><span class="ch num">1.64M</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Trade</h2>
+        <div class="ticket">
+          <div class="field">
+            <label>Amount — XOM</label>
+            <div class="amount"><span class="cur">$</span><input type="text" value="2,500.00"></div>
+          </div>
+          <div class="derived"><span>Quantity</span><span class="num">21.1112</span></div>
+          <div class="derived"><span>At price</span><span class="num">118.42</span></div>
+          <button class="btn">Buy</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ══ MARKETS ═════════════════════════════════════════════════════════════ -->
+<main class="view" id="markets" hidden>
+  <div class="markets-pane">
+    <table class="mkt">
+      <thead>
+        <tr>
+          <th>Symbol</th><th>Name</th>
+          <th class="col-price">Last</th>
+          <th class="col-change" aria-sort="descending">Day %</th>
+          <th class="col-vol">Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Sector groups order by aggregate day change. Under the oil shock,
+             Energy rises above Travel — which is the point of the surface. -->
+        <tr class="sector-head"><td colspan="3">Energy</td><td class="agg up">+6.02%</td><td></td></tr>
+        <tr><td class="sym">OXY</td><td class="name">Occidental Petroleum</td><td class="num">71.20</td><td class="num up">+7.44%</td><td class="num">1.12M</td></tr>
+        <tr><td class="sym">XOM</td><td class="name">Exxon Mobil</td><td class="num">118.42</td><td class="num up">+6.18%</td><td class="num">2.41M</td></tr>
+        <tr><td class="sym">CVX</td><td class="name">Chevron</td><td class="num">162.07</td><td class="num up">+5.44%</td><td class="num">1.31M</td></tr>
+        <tr><td class="sym">SLB</td><td class="name">Schlumberger</td><td class="num">47.85</td><td class="num up">+5.02%</td><td class="num">0.94M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Materials</td><td class="agg up">+1.41%</td><td></td></tr>
+        <tr><td class="sym">LIN</td><td class="name">Linde</td><td class="num">462.30</td><td class="num up">+1.88%</td><td class="num">0.41M</td></tr>
+        <tr><td class="sym">NEM</td><td class="name">Newmont</td><td class="num">44.12</td><td class="num up">+1.22%</td><td class="num">0.73M</td></tr>
+        <tr><td class="sym">DOW</td><td class="name">Dow Inc</td><td class="num">53.90</td><td class="num up">+1.13%</td><td class="num">0.58M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Financials</td><td class="agg up">+0.58%</td><td></td></tr>
+        <tr><td class="sym">JPM</td><td class="name">JPMorgan Chase</td><td class="num">214.55</td><td class="num up">+0.64%</td><td class="num">1.08M</td></tr>
+        <tr><td class="sym">BAC</td><td class="name">Bank of America</td><td class="num">41.28</td><td class="num up">+0.61%</td><td class="num">1.44M</td></tr>
+        <tr><td class="sym">GS</td><td class="name">Goldman Sachs</td><td class="num">498.11</td><td class="num up">+0.52%</td><td class="num">0.36M</td></tr>
+        <tr><td class="sym">MS</td><td class="name">Morgan Stanley</td><td class="num">102.74</td><td class="num up">+0.54%</td><td class="num">0.61M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Healthcare</td><td class="agg up">+0.22%</td><td></td></tr>
+        <tr><td class="sym">JNJ</td><td class="name">Johnson &amp; Johnson</td><td class="num">158.44</td><td class="num up">+0.31%</td><td class="num">0.72M</td></tr>
+        <tr><td class="sym">PFE</td><td class="name">Pfizer</td><td class="num">28.91</td><td class="num up">+0.24%</td><td class="num">1.19M</td></tr>
+        <tr><td class="sym">UNH</td><td class="name">UnitedHealth</td><td class="num">572.08</td><td class="num up">+0.12%</td><td class="num">0.29M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Technology</td><td class="agg up">+0.14%</td><td></td></tr>
+        <tr><td class="sym">AAPL</td><td class="name">Apple</td><td class="num">227.13</td><td class="num up">+0.21%</td><td class="num">1.98M</td></tr>
+        <tr><td class="sym">MSFT</td><td class="name">Microsoft</td><td class="num">418.66</td><td class="num up">+0.18%</td><td class="num">1.52M</td></tr>
+        <tr><td class="sym">NVDA</td><td class="name">NVIDIA</td><td class="num">124.37</td><td class="num up">+0.09%</td><td class="num">2.88M</td></tr>
+        <tr><td class="sym">GOOGL</td><td class="name">Alphabet</td><td class="num">171.22</td><td class="num up">+0.11%</td><td class="num">1.21M</td></tr>
+        <tr><td class="sym">AMZN</td><td class="name">Amazon</td><td class="num">186.40</td><td class="num down">&minus;0.06%</td><td class="num">1.37M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Consumer staples</td><td class="agg down">&minus;0.18%</td><td></td></tr>
+        <tr><td class="sym">PG</td><td class="name">Procter &amp; Gamble</td><td class="num">167.55</td><td class="num down">&minus;0.11%</td><td class="num">0.48M</td></tr>
+        <tr><td class="sym">KO</td><td class="name">Coca-Cola</td><td class="num">62.84</td><td class="num down">&minus;0.19%</td><td class="num">0.67M</td></tr>
+        <tr><td class="sym">WMT</td><td class="name">Walmart</td><td class="num">70.12</td><td class="num down">&minus;0.24%</td><td class="num">0.82M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Utilities</td><td class="agg down">&minus;0.64%</td><td></td></tr>
+        <tr><td class="sym">NEE</td><td class="name">NextEra Energy</td><td class="num">72.18</td><td class="num down">&minus;0.52%</td><td class="num">0.55M</td></tr>
+        <tr><td class="sym">DUK</td><td class="name">Duke Energy</td><td class="num">104.77</td><td class="num down">&minus;0.68%</td><td class="num">0.31M</td></tr>
+        <tr><td class="sym">SO</td><td class="name">Southern Co</td><td class="num">85.44</td><td class="num down">&minus;0.72%</td><td class="num">0.38M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Industrials</td><td class="agg down">&minus;1.22%</td><td></td></tr>
+        <tr><td class="sym">CAT</td><td class="name">Caterpillar</td><td class="num">338.90</td><td class="num down">&minus;0.94%</td><td class="num">0.42M</td></tr>
+        <tr><td class="sym">BA</td><td class="name">Boeing</td><td class="num">176.28</td><td class="num down">&minus;1.28%</td><td class="num">0.88M</td></tr>
+        <tr><td class="sym">FDX</td><td class="name">FedEx</td><td class="num">274.51</td><td class="num down">&minus;1.44%</td><td class="num">0.34M</td></tr>
+        <tr><td class="sym">UPS</td><td class="name">United Parcel Service</td><td class="num">133.06</td><td class="num down">&minus;1.21%</td><td class="num">0.51M</td></tr>
+
+        <tr class="sector-head"><td colspan="3">Travel &amp; leisure</td><td class="agg down">&minus;4.44%</td><td></td></tr>
+        <tr><td class="sym">UAL</td><td class="name">United Airlines</td><td class="num">52.66</td><td class="num down">&minus;5.13%</td><td class="num">1.64M</td></tr>
+        <tr><td class="sym">DAL</td><td class="name">Delta Air Lines</td><td class="num">38.91</td><td class="num down">&minus;4.82%</td><td class="num">1.47M</td></tr>
+        <tr><td class="sym">LUV</td><td class="name">Southwest Airlines</td><td class="num">27.33</td><td class="num down">&minus;4.11%</td><td class="num">0.96M</td></tr>
+        <tr><td class="sym">CCL</td><td class="name">Carnival Corp</td><td class="num">18.04</td><td class="num down">&minus;3.97%</td><td class="num">1.22M</td></tr>
+        <tr><td class="sym">MAR</td><td class="name">Marriott International</td><td class="num">241.18</td><td class="num down">&minus;4.18%</td><td class="num">0.44M</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+/* Tab switching only — this file is a static reference, not an app.
+   No polling, no data, no framework. */
+document.querySelectorAll('.tab').forEach(function (t) {
+  t.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (x) {
+      x.setAttribute('aria-selected', String(x === t));
+    });
+    document.getElementById('dashboard').hidden = t.dataset.view !== 'dashboard';
+    document.getElementById('markets').hidden   = t.dataset.view !== 'markets';
+  });
+});
+</script>
+</body>
+</html>
