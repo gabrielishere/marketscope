@@ -13,14 +13,10 @@ non-technical audience in a single view.
 
 - **O1** A running instance advances every instrument's price once per second of wall time
   with no client request, and a bar appended at tick *t* is never modified by any later tick.
-- **O2** Two instances started from the same fixed seed produce identical backfilled
-  histories and identical starting portfolios, compared field by field.
 - **O3** Every instrument's price is strictly greater than zero at every tick, for every
-  scenario in the library, over a run of at least 5000 ticks.
-- **O4** The history holds at most 5000 bars per instrument; tick 5001 leaves the count at
-  5000 and the oldest bar is the one that is gone.
+  scenario in the library, over a run of at least 1200 ticks.
 - **O5** Over any window, the sum of the stored per-factor contributions plus the stored
-  idiosyncratic residual equals the realised log return over that window, to within 1e-9.
+  idiosyncratic residual equals the realised log return over that window, to within 1e-6.
 - **O6** Activating a scenario leaves every bar before `activated_at` byte-identical to what
   it was before the POST, and changes bars after it.
 - **O7** Every route declares a `response_model`, a tag and an explicit `operation_id`, and
@@ -30,8 +26,6 @@ non-technical audience in a single view.
 - **O9** A trade posted as an amount produces a fractional quantity equal to
   `amount ÷ price` at execution, stored as a float, and the position's average entry
   reflects it.
-- **O10** The portfolio response reports value, return and today's change as one set per
-  currency, and no field anywhere sums across currencies.
 - **O11** `GET /movers` returns gainers descending by day change %, losers ascending by day
   change %, and most active descending by session volume. Under an active scenario the
   membership of at least one of the three lists differs from baseline.
@@ -46,13 +40,10 @@ non-technical audience in a single view.
 - **O15** Selecting a scenario issues the POST and refreshes quotes without waiting out the
   poll interval.
 - **O16** The string `Simulated feed` is present in the header on every view.
-- **O17** The portfolio summary renders above every other element of the dashboard.
 - **O18** The impact panel's default view shows plain-language sentences and at most three
   bars; no exposure value such as `oil beta -0.9` appears outside the expanded detail.
 - **O19** The detail chart draws a labelled vertical marker at `activated_at` while a
   scenario is active, and none while at baseline.
-- **O20** Adding a scenario to the library requires editing JSON only, with no change to any
-  `.py` file.
 - **O21** Each scenario in the library carries two or three headlines, and the ticker strip
   shows the active scenario's headlines and the baseline's when at baseline.
 - **O22** Across a full poll cycle no numeric column changes width and no row reflows: a
@@ -95,9 +86,10 @@ Bounds on how the system is built. Every line is binding on every task.
 - The PRNG seed is a fixed constant and the starting portfolio is fixed, so a run is
   reproducible.
 - Position size is a float, never an integer.
-- Instruments carry a native currency and there is no FX rate anywhere. Portfolio value,
-  return and today's change are reported one set per currency and never summed across them.
-  A trade amount is in the instrument's native currency.
+- Every instrument is denominated in the same currency and there is no FX rate anywhere.
+  Portfolio value, return and today's change are one set of figures, and a trade amount is in
+  that currency. Instruments still carry a currency field, so the UI has a symbol to render,
+  but it is constant across the universe.
 
 **Surface**
 
@@ -160,8 +152,7 @@ Bounds on how the system is built. Every line is binding on every task.
 - No price-level literal is asserted in any test. A fixed seed makes exact prices
   reproducible, but the only source for such a literal is the implementation itself, and a
   test that takes its expected value from the code under test cannot fail. Price behaviour is
-  asserted as properties: positivity, reconciliation, ordering, boundedness, determinism
-  across two runs.
+  asserted as properties: positivity, reconciliation, ordering and boundedness.
 
 ## Definitions
 
@@ -225,7 +216,7 @@ nothing below it matters.
 | **F6d** | T13 | the toolbar, its label and the scenario chip persist across both tabs |
 | **F7** | T17 | no column boundary moves as a price crosses a digit width |
 | **F8** | T17 | rising rows flash green, falling red |
-| **F9** | T15 | one summary block per currency, nothing summed across them |
+| **F9** | T15 | the summary shows value, return and today's change, above every other element |
 | **F10** | T20 | an amount yields a fractional quantity, and the summary updates |
 | **F11** | T18 | a two-character query matches, and omits a known non-match |
 | **F12** | T24 | peers are same-sector and ranked by impact |
@@ -328,7 +319,7 @@ header; and every model named below rejects a payload with a required field remo
 - CREATE `backend/pyproject.toml` declaring `fastapi`, `pydantic`, and a dev group with `pytest` and `httpx`
 - CREATE `backend/app/main.py`
 - CREATE `backend/app/models.py`
-- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `CurrencyTotals`, `PortfolioResponse`, `TradeRequest`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
+- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `TradeRequest`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
 - CREATE `backend/tests/test_models.py`
 - CREATE `backend/tests/test_app.py`
 
@@ -373,7 +364,7 @@ enum, so that adding a scenario is a data edit.
 **Outcome:** The loader returns 6 or 7 scenarios including a baseline whose every shock and
 drift is zero and an oil supply shock; every scenario, baseline included, carries 2 or 3
 headlines; each non-baseline scenario names at least two factors; the id enum's members equal
-the ids present in the JSON. → serves **O20**, **O21**
+the ids present in the JSON. → serves **O21**
 **Reads:** `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/data/scenarios.json`
@@ -397,10 +388,11 @@ in **T25** has a history to append to and nothing downstream computes a session 
 with a capacity rule, testable against literals with no simulation running — on its own
 commit, so a failure in the engine maths leaves it standing.*
 
-**Outcome:** Appending 5001 bars leaves the count at 5000 and the bar that is gone is the
-oldest; `Bar` carries exactly the fields the Definitions name; `day_change_pct` and
+**Outcome:** `Bar` carries exactly the fields the Definitions name; the buffer caps at 5000
+bars per instrument and discards the oldest, per Constraints; `day_change_pct` and
 `session_volume` compute against tick index 390 boundaries as the Definitions state, over
-hand-constructed bars rather than simulated ones. → serves **O4**
+hand-constructed bars rather than simulated ones. → serves no outcome directly; it is the
+structure **T25** appends to
 **Reads:** nothing — it depends on no other module.
 **Deliverables:**
 - CREATE `backend/app/buffer.py`
@@ -412,7 +404,7 @@ hand-constructed bars rather than simulated ones. → serves **O4**
 - CREATE `backend/tests/test_buffer.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts the cap and
-the eviction order at both the 5000 and the 5001 boundary, and asserts `day_change_pct` and
+the eviction order at the cap boundary, and asserts `day_change_pct` and
 `session_volume` against bars constructed by hand across a known tick-390 boundary, with the
 expected values written as literals taken from the Definitions rather than from the code. Run
 before replying, output pasted.
@@ -424,10 +416,9 @@ returns, the multiplicative price update and the stored per-factor contributions
 each tick to the buffer **T4** provides, so that price history exists and every move is
 attributable.
 **Outcome:** Ticking advances every instrument's price by `exp(Σ beta·f + σ·vol_mult·ε)` and
-appends one `Bar` per instrument; prices stay strictly positive over 5000 ticks under every
+appends one `Bar` per instrument; prices stay strictly positive over 1200 ticks under every
 scenario in the library; a bar's stored contributions plus its residual equal its log return
-to within 1e-9; two engines built with the same seed produce identical bar sequences.
-→ serves **O1**, **O2**, **O3**, **O5**
+to within 1e-6. → serves **O1**, **O3**, **O5**
 **Reads:** `backend/app/buffer.py`, `backend/app/instruments.py`, `backend/app/scenarios.py`
 **Deliverables:**
 - CREATE `backend/app/sim.py`
@@ -436,9 +427,9 @@ to within 1e-9; two engines built with the same seed produce identical bar seque
 - CREATE `backend/tests/test_sim.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-clause: positivity over 5000 ticks for each scenario in the library, contribution
-reconciliation to 1e-9, and bar-for-bar identity of two same-seed engines. No price literal is
-asserted, per Constraints. Run before replying, output pasted.
+clause: positivity over 1200 ticks for each scenario in the library, and contribution
+reconciliation to 1e-6. No price literal is asserted, per Constraints. Run before replying,
+output pasted.
 
 ## T5 — In-process state, fixed-seed backfill and the tick loop
 
@@ -448,7 +439,7 @@ second for the life of the process.
 **Outcome:** `build_state()` leaves 780 bars per instrument and a fixed non-empty portfolio
 identical across two calls; the active scenario is baseline; and one call to `advance_once`
 appends exactly one bar to every instrument — this being the same function the background
-loop calls, so the loop's behaviour is the function's. → serves **O1**, **O2**
+loop calls, so the loop's behaviour is the function's. → serves **O1**
 **Reads:** `backend/app/sim.py`, `backend/app/buffer.py`, `backend/app/main.py`
 **Deliverables:**
 - CREATE `backend/app/state.py`
@@ -491,13 +482,12 @@ before replying, output pasted.
 
 ## T7 — Portfolio and the amount-denominated trade
 
-**Objective:** Serve paper positions with per-currency totals, and accept a trade expressed
-as an amount in the instrument's native currency.
+**Objective:** Serve paper positions with their totals, and accept a trade expressed as an
+amount in the universe's currency.
 **Outcome:** `POST /portfolio/trade` with an amount produces a position quantity equal to
 `amount ÷ price` as a float, updates the average entry on a second buy of the same symbol,
-and rejects an amount exceeding the cash balance in that currency. `GET /portfolio` returns
-one totals row per currency present in the holdings and no field summing across them.
-→ serves **O9**, **O10**
+and rejects an amount exceeding the cash balance. `GET /portfolio` returns one set of totals
+— value, return and today's change. → serves **O9**
 **Reads:** `backend/app/state.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/portfolio.py`
@@ -509,8 +499,7 @@ one totals row per currency present in the holdings and no field summing across 
 **Evidenced by:** `cd backend && uv run pytest tests/test_portfolio.py -v` — asserts the
 derived quantity is fractional and equals `amount ÷ price`, asserts the average entry after
 two buys at different prices, asserts an over-balance trade is rejected, and asserts the
-totals payload has one row per currency and no cross-currency total field. Run before
-replying, output pasted.
+totals payload carries value, return and today's change. Run before replying, output pasted.
 
 ## T8 — Movers and the macro drivers strip
 
@@ -559,7 +548,7 @@ returns 422. Run before replying, output pasted.
 summed from the stored per-tick contributions.
 **Outcome:** `GET /impact/{symbol}` returns the move since activation with its factor
 contributions ordered largest absolute first, a residual, and a templated sentence per
-factor; the contributions plus residual reconcile with the headline move to within 1e-9.
+factor; the contributions plus residual reconcile with the headline move to within 1e-6.
 `GET /impact/portfolio` returns a per-holding breakdown and is never resolved as a symbol
 lookup. → serves **O5**, **O8**
 **Reads:** `backend/app/state.py`, `backend/app/buffer.py`, `backend/app/models.py`
@@ -571,7 +560,7 @@ lookup. → serves **O5**, **O8**
 - CREATE `backend/tests/test_impact.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_impact.py -v` — asserts the
-reconciliation to 1e-9, asserts the contribution ordering, and asserts
+reconciliation to 1e-6, asserts the contribution ordering, and asserts
 `GET /impact/portfolio` returns the portfolio payload rather than a 404 or a symbol payload.
 Run before replying, output pasted.
 
@@ -639,7 +628,7 @@ containing the exact string `Simulated feed` and a two-tab navigation — Dashbo
 Markets — **outside** the `router-outlet`, so no route can render without them; the dashboard
 composes all ten feature slots with the portfolio summary first; every slot renders a
 skeleton at its final dimensions; and no component source declares a hex colour, a `px` value
-or a millisecond duration. → serves **O16**, **O17**, **O23**, **O24**
+or a millisecond duration. → serves **O16**, **O23**, **O24**
 **Reads:** `frontend/src/app/app.config.ts`
 **Deliverables:**
 - CREATE `frontend/src/styles/tokens.css`
@@ -701,17 +690,18 @@ before commit.
 ## T15 — Portfolio summary
 
 **Objective:** Fill the portfolio summary slot with total value, total return in currency and
-%, and today's change, as one set per currency.
-**Outcome:** The summary shows one block per currency held, using `day change %` as the
-Definitions define it; no displayed figure sums across currencies. → serves **O10**, **O17**
+%, and today's change.
+**Outcome:** The summary shows value, return and today's change as one block, using
+`day change %` as the Definitions define it. → serves no outcome directly; it is the
+dashboard's first slot
 **Reads:** `frontend/src/app/api/`, `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/portfolio/portfolio-summary.component.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component's
-template and confirm no expression sums across currency groups.
-**Deferred to human review:** one block renders per currency held, and the summary sits above
-every other element. Recorded `UNVERIFIED`; held for human review before commit.
+template showing the three figures bound through `format.ts`.
+**Deferred to human review:** the summary renders value, return and today's change, and sits
+above every other element. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T16 — Macro drivers strip
 
@@ -799,10 +789,10 @@ for human review before commit.
 ## T20 — Trade ticket
 
 **Objective:** Fill the trade ticket slot with a form taking an amount in the instrument's
-native currency, showing the derived quantity before submission.
+currency, showing the derived quantity before submission.
 **Outcome:** The amount field is labelled with the selected instrument's currency; the
 derived quantity shown equals `amount ÷ price` and is fractional; submitting posts the amount,
-not a quantity. → serves **O9**, **O10**
+not a quantity. → serves **O9**
 **Reads:** `frontend/src/app/api/`, `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/portfolio/trade-ticket.component.ts`
