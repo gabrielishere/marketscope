@@ -13,13 +13,13 @@ the process. This is the module every route reads through.
 
 # Outcome
 
-`build_state()` leaves 780 bars per instrument and a fixed non-empty portfolio, identical
-across two calls. The active scenario is baseline. One call to `advance_once` appends exactly
+`build_state()` leaves 780 bars per instrument, the first at tick index 0, and a fixed
+non-empty portfolio, identical across two calls. The active scenario is baseline. One call to `advance_once` appends exactly
 one bar to every instrument — this being the same function the background loop calls, so the
 loop's behaviour is the function's.
 
 - **Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
-  depth is exactly 780 for every instrument, that two `build_state()` calls compare equal bar
+  depth is exactly 780 for every instrument and that the earliest bar held is at tick index 0, that two `build_state()` calls compare equal bar
   for bar and position for position, that the active scenario is baseline, and that one
   `advance_once` call raises every instrument's bar count by exactly one. The comparison test
   must report how many bars and how many positions it compared, so a test comparing two empty
@@ -30,6 +30,9 @@ loop's behaviour is the function's.
 
 - Startup backfills 780 ticks, which at 390 ticks to a session establishes exactly two prior
   sessions — enough for `day_change_pct` to have a session boundary behind it.
+- **The backfill starts at tick index 0.** `RingBuffer.day_change_pct` raises when the bar at
+  session start is not held, and starting the index anywhere else makes that reachable on the
+  first session.
 - The PRNG seed is a fixed constant and the starting portfolio is fixed, so a run is
   reproducible.
 - One tick is one second of wall time.

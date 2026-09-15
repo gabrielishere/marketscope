@@ -37,7 +37,8 @@ per-holding breakdown and is never resolved as a symbol lookup.
   recompute the factor model.
 - `activated_at` is the tick index the active scenario was activated at, held on application
   state by T9.
-- `FACTOR_SENTENCES` templates one plain-language sentence per factor. The frontend shows
+- `FACTOR_SENTENCES` is keyed by the five factor keys — `market`, `rates`, `oil`, `usd`,
+  `credit` — and templates one plain-language sentence per factor. The frontend shows
   these in the collapsed impact panel and must show **no exposure value** such as
   `oil beta -0.9` there, so the sentences carry no beta and no exposure number.
 - Reconciliation is to 1e-6, matching the tolerance T25 holds the stored contributions to.

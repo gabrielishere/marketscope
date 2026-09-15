@@ -48,7 +48,8 @@ Bounds on how the system is built. Every line is binding on every task.
 
 **The model**
 
-- The factors are exactly: market, rates/duration, oil, USD, credit spread.
+- The factors are exactly: market, rates/duration, oil, USD, credit spread. Their key strings
+  are settled in Definitions under **Factor keys** and are not these words.
 - Betas are drawn from {−1, −0.5, 0, +0.5, +1}.
 - One tick is one second of wall time and represents one minute of market time.
 - Startup backfills 780 ticks.
@@ -114,12 +115,26 @@ separately is four different answers with nothing marking which is right.
 
 - **Market time.** One tick is one minute. A **session** is **390 ticks** — a 6.5-hour
   trading day. The 780-tick backfill therefore establishes exactly two prior sessions.
+- **Factor keys.** The five factors are, in factor order: `market`, `rates`, `oil`, `usd`,
+  `credit`. **These exact strings are the keys** — of `Bar.contributions`, of an instrument's
+  beta map in `instruments.json`, of a scenario's per-factor shocks, and of the `factor` field
+  on `FactorContribution` and `MacroDriver`. They are identifier-style deliberately: they
+  reach the client as generated TypeScript, so a slash or a space in a key would travel. The
+  prose names — market, rates/duration, oil, USD, credit spread — describe the factors and are
+  not the keys. For display the client shows Market, Rates, Oil, USD, Credit.
 - **Session start.** The most recent tick index that is a multiple of 390.
 - **`day change %`.** `(close_latest / close_at_session_start − 1) × 100`, read off the
   buffer. Every surface that displays or sorts by day change uses this definition and no
   other — it is shown by T6 and T17, sorted on by T8, and aggregated by T7 and T15.
 - **Session volume.** The sum of `volume` over every bar from session start to the latest
   bar. This is what `/movers` ranks *most active* on.
+- **Buffer boundaries.** `day_change_pct` on an empty buffer, or on one whose oldest bar
+  falls after the current session start, **raises** rather than returning a figure — there is
+  no honest number for a session whose opening bar is not held, and a fallback would quietly
+  misreport every surface that displays day change. `session_volume` on such a buffer is
+  determined and returns the sum of what it holds. Neither case arises in the assembled
+  system: backfill starts at tick 0 and the 5000-bar cap is about 12.8 sessions, so eviction
+  cannot reach a session-start bar.
 - **`Bar` fields.** `t: int` (tick index), `open`, `high`, `low`, `close: float`,
   `volume: float`, `contributions: dict[str, float]` with exactly one entry per factor, and
   `residual: float`. O5's reconciliation is `sum(contributions.values()) + residual` against
@@ -350,8 +365,8 @@ literal is asserted, per Constraints. Run before replying, output pasted.
 **Objective:** Hold the engine, the portfolio, the cash balance and the active scenario in
 process; backfill history at startup from a fixed seed; and advance the engine once per
 second for the life of the process.
-**Outcome:** `build_state()` leaves 780 bars per instrument and a fixed non-empty portfolio
-identical across two calls; the active scenario is baseline; and one call to `advance_once`
+**Outcome:** `build_state()` leaves 780 bars per instrument, **the first at tick index 0**,
+and a fixed non-empty portfolio identical across two calls; the active scenario is baseline; and one call to `advance_once`
 appends exactly one bar to every instrument — this being the same function the background
 loop calls, so the loop's behaviour is the function's. → serves **O1**
 **Reads:** `backend/app/sim.py`, `backend/app/buffer.py`, `backend/app/main.py`
@@ -365,7 +380,8 @@ loop calls, so the loop's behaviour is the function's. → serves **O1**
 - CREATE `backend/tests/test_state.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
-depth is 780, that two `build_state()` calls compare equal bar for bar and position for
+depth is 780 and the earliest bar held is at tick index 0, that two `build_state()` calls
+compare equal bar for bar and position for
 position, that the active scenario is baseline, and that one `advance_once` call raises every
 instrument's bar count by exactly one. Run before replying, output pasted.
 

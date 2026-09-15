@@ -30,7 +30,8 @@ opposite signs.
 
 # Task context
 
-- The five factors are exactly: market, rates/duration, oil, USD, credit spread. Factor order
+- The five factors, by key, are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
+  order — see **Factor keys** in the spec's Definitions. Use the key strings verbatim. Factor order
   is that order, and later tasks rank and display by it.
 - The per-sector minimum of 4 and the opposing-beta pair are load-bearing for the frontend
   spec's markets table, which groups by sector. A sector holding one row renders as a header
@@ -61,6 +62,8 @@ opposite signs.
 # Constraints
 
 - Betas are drawn only from {-1.0, -0.5, 0.0, 0.5, 1.0}. No intermediate value.
+- Each instrument's beta map is keyed by the five factor keys exactly. `Bar` rejects a
+  `contributions` dict keyed any other way, so a divergent spelling here fails at T25.
 - Use real-looking symbols, names and sectors. The demo is shown to a non-technical audience
   and `SYM1`/`Sector A` reads as a toy.
 - No price level is written into this file as an assertion in any test. Starting prices may

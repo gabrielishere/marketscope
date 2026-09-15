@@ -38,8 +38,10 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
   other.
 - **Session volume.** The sum of `volume` over every bar from session start to the latest bar.
   This is what the movers endpoint ranks *most active* on.
-- **The five factors are exactly: market, rates/duration, oil, USD, credit spread.** You need
-  them to key `contributions`, and they are the only thing you take from outside this module.
+- **The five factor keys are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
+  order.** They key `contributions`, and they are the only thing you take from outside this
+  module. Use these strings verbatim — they are identifier-style on purpose and are not the
+  prose names the Constraints use to describe the factors.
 - This task and T25 were one task. The split puts the mechanical half — a data structure with
   a capacity rule, testable against literals with no simulation running — on its own commit,
   so a failure in the engine maths leaves it standing. Write nothing here that needs the

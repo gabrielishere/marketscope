@@ -27,7 +27,8 @@ the library. A bar's stored contributions plus its residual equal its log return
 
 # Task context
 
-- The five factors are exactly: market, rates/duration, oil, USD, credit spread.
+- The five factors, by key, are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
+  order — see **Factor keys** in the spec's Definitions. Use the key strings verbatim.
 - One tick is one second of wall time and represents one minute of market time.
 - A scenario supplies per-factor shock, drift and half-life, plus a scenario-level volatility
   multiplier. Baseline's shocks and drifts are all zero.

@@ -29,7 +29,8 @@ present in the JSON.
 
 # Task context
 
-- The five factors are exactly: market, rates/duration, oil, USD, credit spread.
+- The five factors, by key, are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
+  order — see **Factor keys** in the spec's Definitions. Use the key strings verbatim.
 - **Baseline carries headlines like any other scenario.** The ticker shows the baseline's
   headlines while at baseline, so a baseline without them leaves the strip empty in the app's
   resting state — which is what an audience sees first.

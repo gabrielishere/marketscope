@@ -124,6 +124,11 @@ separately is four different answers with nothing marking which is right.
 
 - **Market time.** One tick is one minute. A **session** is **390 ticks** — a 6.5-hour
   trading day. The 780-tick backfill therefore establishes exactly two prior sessions.
+- **Factor keys.** The five factors are, in factor order: `market`, `rates`, `oil`, `usd`,
+  `credit`. These exact strings arrive on the `factor` field of `MacroDriver` and
+  `FactorContribution`, so **factor order** means that order and nothing else. For display the
+  client shows Market, Rates, Oil, USD, Credit — the keys are identifier-style and are not
+  labels.
 - **Session start.** The most recent tick index that is a multiple of 390.
 - **`day change %`.** `(close_latest / close_at_session_start − 1) × 100`, read off the
   buffer. Every surface that displays or sorts by day change uses this definition and no
