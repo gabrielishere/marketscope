@@ -1,0 +1,49 @@
+{
+  "seq": 4,
+  "spec": "trading-demo-backend",
+  "task": "T4",
+  "dispatched": true,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T4-bar-and-ring-buffer.md",
+
+  "started": "2026-09-15T23:30:12Z",
+  "ended": "2026-09-15T23:35:33Z",
+  "duration_s": 321,
+
+  "model": { "requested": "claude-opus-5", "actual": "claude-opus-5" },
+  "usage": { "turns": 36, "input": 72, "output": 24602,
+             "cache_write": 97230, "cache_read": 998802 },
+
+  "gate": { "passed": true, "defect": null },
+
+  "deliverables": [
+    { "path": "backend/app/buffer.py", "found": true,
+      "symbols": [
+        { "name": "FACTORS", "found": true, "line": 33 },
+        { "name": "Bar", "found": true, "line": 55 },
+        { "name": "RingBuffer", "found": true, "line": 81 },
+        { "name": "append", "found": true, "line": 93 },
+        { "name": "day_change_pct", "found": true, "line": 112 },
+        { "name": "session_volume", "found": true, "line": 124 }
+      ] },
+    { "path": "backend/tests/test_buffer.py", "found": true, "symbols": [] }
+  ],
+
+  "evidence": [
+    { "command": "cd backend && uv run pytest tests/test_buffer.py -v",
+      "exit": 0, "summary": "20 passed in 0.03s", "verbatim": null },
+    { "command": "cd backend && uv run pytest tests/ -q",
+      "exit": 0, "summary": "54 passed, 2 warnings in 0.17s (+20 from 34; no earlier test regressed)", "verbatim": null },
+    { "command": "cd backend && uv run python -c \"from app.buffer import FACTORS, Bar; dataclasses.fields(Bar)\"",
+      "exit": 0, "summary": "orchestrator inspection: Bar's fields are exactly t, open, high, low, close, volume, contributions, residual; FACTORS is ('market', 'rates/duration', 'oil', 'USD', 'credit spread'); buffer.py imports only collections.deque and dataclasses, so the no-dependency constraint holds", "verbatim": null }
+  ],
+
+  "status": { "run": "DONE", "deliverables": "MADE", "outcome": "PASSED" },
+  "commits": { "deliverables": "d8f0268", "log": null },
+  "escalations": [
+    "Two boundary cases the Definitions leave undetermined. Per the Constraint I did not choose a value silently; both refuse instead ... Empty buffer ... Both raise ValueError. A buffer whose oldest bar falls after the current session start ... day_change_pct raises ValueError naming the session-start tick and the oldest tick held. session_volume is not undetermined here ... so it returns that sum.",
+    "Neither case can arise in the assembled system: T5 backfills 780 ticks from tick 0 ... The first session is determined ... provided T5's backfill begins at tick index 0. If T5 starts the index anywhere else, the first session falls into the second case above and the author must settle it.",
+    "If the intended answer is 'fall back to the oldest bar held' or 'return 0.0', say so and I will change it; I refused to pick.",
+    "The factor key strings are fixed here first. ... FACTORS in backend/app/buffer.py is the literal tuple (\"market\", \"rates/duration\", \"oil\", \"USD\", \"credit spread\") — the prose reproduced character for character. T2's instruments.json beta keys and T25's contributions keys must use exactly these strings; Bar now rejects any contributions dict whose keys are not exactly these five, so a divergent spelling in T2/T25 fails loudly rather than storing a broken reconciliation. If the intended JSON spelling is identifier-style (rates_duration, usd, credit_spread), the Definitions should say so before T2 is dispatched.",
+    "Bar is a frozen slotted dataclass, not a Pydantic model: it is an internal record ... Missing contributions or residual therefore raises TypeError rather than ValidationError."
+  ]
+}
