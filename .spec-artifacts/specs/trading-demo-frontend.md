@@ -1,33 +1,20 @@
 ---
-spec: trading-demo
+spec: trading-demo-frontend
 ---
 
 # Objective
 
-A trader-facing dashboard that shows synthetic price fluctuations of a fixed instrument
-universe, where selecting a world event from a dropdown visibly and causally changes the
-data. It exists so that a factor-driven market simulation can be demonstrated to a
-non-technical audience in a single view.
+The trader-facing dashboard: a client generated from the committed schema, a design system
+taken from an approved mockup, and the surfaces on which a world event selected from a
+dropdown visibly and causally changes the data. It exists so that the simulation can be
+demonstrated to a non-technical audience.
+
+**This spec runs after `trading-demo-backend`.** It reads `backend/openapi.json`, which that
+spec's T11 commits, and it never starts a backend process — **T12** builds with no server
+running, which is what makes that possible.
 
 # Outcomes
 
-- **O1** A running instance advances every instrument's price once per second of wall time
-  with no client request, and a bar appended at tick *t* is never modified by any later tick.
-- **O3** Every instrument's price is strictly greater than zero at every tick, for every
-  scenario in the library, over a run of at least 1200 ticks.
-- **O5** Over any window, the sum of the stored per-factor contributions plus the stored
-  idiosyncratic residual equals the realised log return over that window, to within 1e-6.
-- **O6** Activating a scenario leaves every bar before `activated_at` byte-identical to what
-  it was before the POST, and changes bars after it.
-- **O7** Every route declares a `response_model`, a tag and an explicit `operation_id`, and
-  `/openapi.json` contains no operation id of the form `<name>_<path>_<method>`.
-- **O8** `GET /impact/portfolio` returns a per-holding breakdown and never an instrument
-  lookup for a symbol named `portfolio`.
-- **O11** `GET /movers` returns gainers descending by day change %, losers ascending by day
-  change %, and most active descending by session volume. Under an active scenario the
-  membership of at least one of the three lists differs from baseline.
-- **O12** `GET /macro` returns exactly five instruments, one per factor, each with exposure
-  1.0 to its own factor and 0.0 to the other four.
 - **O13** The Angular client is generated from the emitted schema and committed, and
   `ng build` succeeds with the backend not running.
 - **O14** One `/quotes` request is in flight per interval for the whole application — the
@@ -41,8 +28,6 @@ non-technical audience in a single view.
   bars; no exposure value such as `oil beta -0.9` appears outside the expanded detail.
 - **O19** The detail chart draws a labelled vertical marker at `activated_at` while a
   scenario is active, and none while at baseline.
-- **O21** Each scenario in the library carries two or three headlines, and the ticker strip
-  shows the active scenario's headlines and the baseline's when at baseline.
 - **O22** Across a full poll cycle no numeric column changes width and no row reflows: a
   price moving between `9.99` and `10.01`, or a percentage between `+9.9%` and `+10.1%`,
   leaves every column boundary in the same place.
@@ -56,6 +41,8 @@ non-technical audience in a single view.
 - **O25** The markets table lists every instrument in the universe, grouped by sector, each
   group headed by its aggregate day change; sector groups order by that aggregate, and rows
   order within a group by the selected column. Activating a scenario reorders the groups.
+- **O26** The ticker strip shows the active scenario's headlines, and the baseline's while at
+  baseline. That the library carries them is **O21**, in the backend spec.
 
 # Constraints
 
@@ -63,30 +50,10 @@ Bounds on how the system is built. Every line is binding on every task.
 
 **Stack**
 
-- Backend is FastAPI with Pydantic response models. No database.
 - Frontend is Angular: standalone components, RxJS, `HttpClient`.
 - Styling is hand-rolled CSS, dark theme. No UI or styling package.
 - Transport is HTTP polling. No WebSockets.
 - Frontend and API are cross-origin in dev. `CORSMiddleware` or an Angular dev proxy is
-  required for requests to reach the API at all.
-- No persistence layer, and nothing is abstracted in anticipation of one.
-
-**The model**
-
-- The factors are exactly: market, rates/duration, oil, USD, credit spread.
-- Betas are drawn from {−1, −0.5, 0, +0.5, +1}.
-- One tick is one second of wall time and represents one minute of market time.
-- Startup backfills 780 ticks.
-- The buffer caps at 5000 bars per instrument and discards the oldest.
-- Each bar carries a synthetic volume; `/movers` ranks *most active* on it.
-- The library holds 6 or 7 scenarios.
-- The PRNG seed is a fixed constant and the starting portfolio is fixed, so a run is
-  reproducible.
-- Position size is a float, never an integer.
-- Every instrument is denominated in the same currency and there is no FX rate anywhere.
-  Portfolio value, return and today's change are one set of figures, and a trade amount is in
-  that currency. Instruments still carry a currency field, so the UI has a symbol to render,
-  but it is constant across the universe.
 
 **Surface**
 
@@ -100,13 +67,6 @@ Bounds on how the system is built. Every line is binding on every task.
 
 - The client is generated by `ng-openapi-gen` and the output is committed, so the frontend
   builds without the backend running.
-- `app.openapi_version` is pinned to `"3.0.2"`. FastAPI emits 3.1 by default and the
-  generator may reject it; pinning is unconditional because the task that would discover the
-  rejection is not the task that can fix it.
-- The schema is emitted to a file by importing the app, never by running a server, so no task
-  depends on a live process.
-- `GET /impact/portfolio` is declared before `GET /impact/{symbol}` in the same router. The
-  ordering is load-bearing, not stylistic.
 
 **Off-limits**
 
@@ -117,8 +77,6 @@ Bounds on how the system is built. Every line is binding on every task.
 
 **How the run is verified**
 
-- Backend outcomes are evidenced by `pytest` and commit at verification, per the
-  orchestrator's default.
 - **Frontend outcomes are verified by a human, not by a checker.** No frontend test framework
   is installed and none is to be added. A frontend task's evidence is what the implementor can
   actually produce — a build, a file, a grep — and its behavioural claim is **deferred to
@@ -137,8 +95,6 @@ Bounds on how the system is built. Every line is binding on every task.
   - This varies the standing commit rule, which `log-schema.md:196-200` allows a spec to do
     here. Backend tasks are unaffected — including **T25**, which sits inside that range by
     reading order but is the backend tick engine and commits at verification like every other
-    backend task.
-- No price-level literal is asserted in any test — see the last bullet of this section.
 
 **The environment**
 
@@ -287,26 +243,12 @@ can be stated independently of the file.
 
 # Shared
 
-- `backend/app/models.py` — the Pydantic response models every route returns — created by **T1**
-- `backend/app/instruments.py` — the instrument universe and its loader — created by **T2**
-- `backend/app/scenarios.py` — the scenario library, its loader and the id enum — created by **T3**
-- `backend/app/buffer.py` — `Bar`, the bounded ring buffer, and the session-relative queries
-  (`day_change_pct`, `session_volume`) every ranking and display surface reads through —
-  created by **T4**
-- `backend/app/sim.py` — the tick engine — created by **T25**
-- `backend/app/state.py` — the in-process store and the accessors every route reads through — created by **T5**
-- `backend/openapi.json` — the emitted contract the client is generated from — created by **T11**
 - `frontend/src/app/api/` — the generated API client — created by **T12**
 - `frontend/src/styles/tokens.css` — the only source of colour, spacing, type, radius and
-  motion values; every component reads it and none redeclares one — created by **T13**
 - `frontend/src/app/core/format.ts` — the shared number, price and signed-percentage
-  formatters, so no component formats a figure its own way — created by **T13**
 - `frontend/src/app/dashboard/dashboard.component.ts` — the composition: it declares every
-  feature slot in its final order at T13 and **is not edited again**. Feature tasks fill
-  their own stub and touch nothing shared — created by **T13**
 - `frontend/src/app/core/quote.service.ts` — the single shared poll — created by **T14**
 - `frontend/src/app/core/scenario.service.ts` — the active scenario and its headlines, read by
-  the selector and the ticker — created by **T22**
 
 **On the stubs.** T13 creates every feature component as a skeleton placeholder rendering its
 loading state, and the dashboard composes all eight from the start. Two things follow. The app
@@ -317,283 +259,6 @@ file nobody else writes, instead of seven of them `UPDATE`-ing the shell in sequ
 # Tasks
 
 Ordered for reading, not for execution.
-
-## T1 — Backend skeleton and response models
-
-**Objective:** Create the FastAPI application and the Pydantic models every route returns, so
-that later tasks add routes to an app that already exists and a contract that is already fixed.
-**Outcome:** `uv run python -V` reports 3.12; `app.main` exposes a FastAPI instance whose
-CORS middleware answers a cross-origin preflight with an `access-control-allow-origin`
-header; and every model named below rejects a payload with a required field removed.
-→ serves **O7**
-**Reads:** nothing — this is the first task.
-**Deliverables:**
-- CREATE `backend/.python-version` containing `3.12`
-- CREATE `backend/pyproject.toml` declaring `fastapi`, `pydantic`, and a dev group with `pytest` and `httpx`
-- CREATE `backend/app/main.py`
-- CREATE `backend/app/models.py`
-- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
-- CREATE `backend/tests/test_models.py`
-- CREATE `backend/tests/test_app.py`
-
-**Evidenced by:** `cd backend && uv run python -V && uv run pytest tests/ -v` — the version
-line must read 3.12; `test_app.py` issues an `OPTIONS` preflight through `TestClient` and
-asserts the allow-origin header is present; `test_models.py` asserts each of the fifteen
-models rejects a payload with a required field removed. Run before replying, output pasted.
-
-## T2 — Instrument universe
-
-**Objective:** Define the instrument universe as JSON and load it at startup, so that
-scenarios have something to act on and betas can be tuned without touching code.
-**Outcome:** The loader returns 40 equities across exactly 7 sectors with **at least 4 in
-every sector**, plus the 5 macro drivers, for 45 instruments total; every instrument carries
-a name, a sector, a currency, a decimal-places value and a beta for each of the five factors;
-every beta is one of {-1.0, -0.5, 0.0, 0.5, 1.0}; each macro driver has exposure 1.0 to its
-own factor and 0.0 to the other four; and **at least two sectors contain a pair of
-instruments whose oil betas have opposite signs**. → serves **O12**, **O25**
-
-*The per-sector minimum and the opposing-beta pair are load-bearing for T26, which groups by
-sector: a sector holding one row renders as a header with nothing under it, and a sector whose
-members all move together makes the table read as a sector model rather than a factor one.*
-**Reads:** `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/data/instruments.json`
-- CREATE `backend/app/instruments.py`
-- ADD type `Instrument` in `backend/app/instruments.py`
-- ADD function `load_instruments() -> dict[str, Instrument]` in `backend/app/instruments.py`
-- CREATE `backend/tests/test_instruments.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_instruments.py -v` — asserts the
-counts — 40 equities, 7 sectors, no sector below 4, 45 total — that every instrument has a
-name, sector, currency and decimal-places value, the beta value set, the five macro drivers'
-exposure rows, and that at least two sectors contain a pair with opposite-signed oil betas.
-Run before replying, output pasted.
-
-## T3 — Scenario library
-
-**Objective:** Define the scenario library as JSON with per-factor shock, drift and half-life
-plus a scenario-level volatility multiplier and its headlines, and load it behind a typed id
-enum, so that adding a scenario is a data edit.
-**Outcome:** The loader returns 6 or 7 scenarios including a baseline whose every shock and
-drift is zero and an oil supply shock; every scenario, baseline included, carries 2 or 3
-headlines; each non-baseline scenario names at least two factors; the id enum's members equal
-the ids present in the JSON. → serves **O21**
-**Reads:** `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/data/scenarios.json`
-- CREATE `backend/app/scenarios.py`
-- ADD type `FactorShock`, `Scenario` in `backend/app/scenarios.py`
-- ADD type `ScenarioId` in `backend/app/scenarios.py`
-- ADD function `load_scenarios() -> dict[ScenarioId, Scenario]` in `backend/app/scenarios.py`
-- CREATE `backend/tests/test_scenarios.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_scenarios.py -v` — asserts the
-library size, the baseline's zeroed factors, the headline counts, and that the enum members
-and the JSON ids are the same set. Run before replying, output pasted.
-
-## T4 — Bar and the bounded ring buffer
-
-**Objective:** Implement the `Bar` record and the bounded per-instrument ring buffer, plus the
-session-relative queries every ranking and display surface reads through, so that the engine
-in **T25** has a history to append to and nothing downstream computes a session figure twice.
-
-*This task and T25 were one task. Splitting them puts the mechanical half — a data structure
-with a capacity rule, testable against literals with no simulation running — on its own
-commit, so a failure in the engine maths leaves it standing.*
-
-**Outcome:** `Bar` carries exactly the fields the Definitions name; the buffer caps at 5000
-bars per instrument and discards the oldest, per Constraints; `day_change_pct` and
-`session_volume` compute against tick index 390 boundaries as the Definitions state, over
-hand-constructed bars rather than simulated ones. → serves no outcome directly; it is the
-structure **T25** appends to
-**Reads:** nothing — it depends on no other module.
-**Deliverables:**
-- CREATE `backend/app/buffer.py`
-- ADD type `Bar` in `backend/app/buffer.py` — fields exactly as the Definitions section states
-- ADD class `RingBuffer` in `backend/app/buffer.py`
-- ADD function `append(self, bar: Bar) -> None` in `backend/app/buffer.py`
-- ADD function `day_change_pct(self) -> float` in `backend/app/buffer.py`
-- ADD function `session_volume(self) -> float` in `backend/app/buffer.py`
-- CREATE `backend/tests/test_buffer.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts the cap and
-the eviction order at the cap boundary, and asserts `day_change_pct` and
-`session_volume` against bars constructed by hand across a known tick-390 boundary, with the
-expected values written as literals taken from the Definitions rather than from the code. Run
-before replying, output pasted.
-
-## T25 — The tick engine
-
-**Objective:** Implement the simulation itself — per-factor returns, per-instrument log
-returns, the multiplicative price update and the stored per-factor contributions — appending
-each tick to the buffer **T4** provides, so that price history exists and every move is
-attributable.
-**Outcome:** Ticking advances every instrument's price by `exp(Σ beta·f + σ·vol_mult·ε)` and
-appends one `Bar` per instrument; prices stay strictly positive over 1200 ticks under every
-scenario in the library; a bar's stored contributions plus its residual equal its log return
-to within 1e-6. → serves **O1**, **O3**, **O5**
-**Reads:** `backend/app/buffer.py`, `backend/app/instruments.py`, `backend/app/scenarios.py`
-**Deliverables:**
-- CREATE `backend/app/sim.py`
-- ADD class `Engine` in `backend/app/sim.py`
-- ADD function `tick(self) -> None` in `backend/app/sim.py`
-- CREATE `backend/tests/test_sim.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-clause: positivity over 1200 ticks for each scenario in the library, and contribution
-reconciliation to 1e-6. No price literal is asserted, per Constraints. Run before replying,
-output pasted.
-
-## T5 — In-process state, fixed-seed backfill and the tick loop
-
-**Objective:** Hold the engine, the portfolio, the cash balance and the active scenario in
-process; backfill history at startup from a fixed seed; and advance the engine once per
-second for the life of the process.
-**Outcome:** `build_state()` leaves 780 bars per instrument and a fixed non-empty portfolio
-identical across two calls; the active scenario is baseline; and one call to `advance_once`
-appends exactly one bar to every instrument — this being the same function the background
-loop calls, so the loop's behaviour is the function's. → serves **O1**
-**Reads:** `backend/app/sim.py`, `backend/app/buffer.py`, `backend/app/main.py`
-**Deliverables:**
-- CREATE `backend/app/state.py`
-- ADD var `SEED`, `BACKFILL_TICKS`, `SESSION_TICKS`, `STARTING_POSITIONS`, `STARTING_CASH` in `backend/app/state.py`
-- ADD class `AppState` in `backend/app/state.py`
-- ADD function `build_state() -> AppState` in `backend/app/state.py`
-- ADD function `advance_once(state: AppState) -> None` in `backend/app/state.py`
-- UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`, whose background task calls `advance_once` once per second and calls nothing else
-- CREATE `backend/tests/test_state.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
-depth is 780, that two `build_state()` calls compare equal bar for bar and position for
-position, that the active scenario is baseline, and that one `advance_once` call raises every
-instrument's bar count by exactly one. Run before replying, output pasted.
-
-## T6 — Market endpoints
-
-**Objective:** Serve symbol search, the polled quote set and the chart series off the buffer,
-so the frontend has prices to display.
-**Outcome:** `GET /symbols?q=` fuzzy-matches symbol and name and returns no non-matching
-instrument, and with `q` omitted or empty returns the whole universe with each entry's name,
-sector, currency and decimal places — this being how the markets table loads its static
-metadata once instead of per poll; `GET /quotes?symbols=` returns one quote per requested
-symbol in request order
-carrying last price, `day change %` as the Definitions define it, and a sparkline;
-`GET /candles/{symbol}?tf=` aggregates the buffer into 1m, 5m, 15m and session bars, and an
-unknown `tf` is rejected rather than silently defaulted. → serves **O7**
-**Reads:** `backend/app/state.py`, `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/routers/market.py`
-- ADD function `get_symbols`, `get_quotes`, `get_candles` in `backend/app/routers/market.py`
-- UPDATE `backend/app/main.py`
-- CREATE `backend/tests/test_market.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
-match excludes a known non-match, that quote order follows request order, that the returned
-day change equals `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a
-bar count consistent with its aggregation factor, and that an unknown `tf` returns 422. Run
-before replying, output pasted.
-
-## T7 — Portfolio
-
-**Objective:** Serve the fixed paper positions and their totals, so the summary has something
-to show.
-**Outcome:** `GET /portfolio` returns every held position with its symbol, quantity and
-average entry, and one set of totals — value, return and today's change, using `day change %`
-as the Definitions define it. → serves no outcome directly; it is what the summary reads
-**Reads:** `backend/app/state.py`, `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/routers/portfolio.py`
-- ADD function `get_portfolio` in `backend/app/routers/portfolio.py`
-- UPDATE `backend/app/main.py`
-- CREATE `backend/tests/test_portfolio.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_portfolio.py -v` — asserts every
-starting position appears with a float quantity, and asserts the totals payload carries value,
-return and today's change. Run before replying, output pasted.
-
-## T8 — Movers and the macro drivers strip
-
-**Objective:** Rank the quote set into gainers, losers and most active, and expose the five
-macro drivers as their own endpoint.
-**Outcome:** `GET /movers` returns gainers sorted descending by `day change %`, losers
-ascending, and most active descending by session volume — both as the Definitions define them
-— with no instrument in both gainers and losers. `GET /macro` returns exactly the five
-macro-driver instruments in factor order. → serves **O11**, **O12**
-**Reads:** `backend/app/state.py`, `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/routers/movers.py`
-- ADD function `get_movers`, `get_macro` in `backend/app/routers/movers.py`
-- UPDATE `backend/app/main.py`
-- CREATE `backend/tests/test_movers.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_movers.py -v` — asserts each list's
-sort direction pairwise, asserts the gainers and losers sets are disjoint, asserts most active
-ranks on `RingBuffer.session_volume`, asserts `/macro` returns exactly five in factor order, and
-asserts that activating a scenario and ticking changes the membership of at least one list.
-Run before replying, output pasted.
-
-## T9 — Scenario endpoints
-
-**Objective:** Expose the scenario library, the active scenario and its activation, deletion
-and headlines, so the dropdown has something to drive.
-**Outcome:** `GET /scenarios` lists the library; `POST /scenario` sets the active scenario and
-stamps `activated_at`; `DELETE /scenario` returns to baseline; `GET /scenario` reports the
-active id, its headlines and `activated_at`; bars written before activation are unchanged by
-it. → serves **O6**, **O21**
-**Reads:** `backend/app/state.py`, `backend/app/scenarios.py`, `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/routers/scenario.py`
-- ADD function `get_scenarios`, `get_scenario`, `post_scenario`, `delete_scenario` in `backend/app/routers/scenario.py`
-- UPDATE `backend/app/main.py`
-- CREATE `backend/tests/test_scenario_routes.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_scenario_routes.py -v` — snapshots
-every bar before a POST and asserts the pre-activation slice is identical afterwards, asserts
-`activated_at` is set on activation and cleared on delete, and asserts an unknown scenario id
-returns 422. Run before replying, output pasted.
-
-## T10 — Impact and attribution endpoints
-
-**Objective:** Serve the scenario impact breakdown for one instrument and for the portfolio,
-summed from the stored per-tick contributions.
-**Outcome:** `GET /impact/{symbol}` returns the move since activation with its factor
-contributions ordered largest absolute first, a residual, and a templated sentence per
-factor; the contributions plus residual reconcile with the headline move to within 1e-6.
-`GET /impact/portfolio` returns a per-holding breakdown and is never resolved as a symbol
-lookup. → serves **O5**, **O8**
-**Reads:** `backend/app/state.py`, `backend/app/buffer.py`, `backend/app/models.py`
-**Deliverables:**
-- CREATE `backend/app/routers/impact.py`
-- ADD function `get_portfolio_impact`, `get_symbol_impact` in `backend/app/routers/impact.py` — `get_portfolio_impact` declared first
-- ADD var `FACTOR_SENTENCES` in `backend/app/routers/impact.py`
-- UPDATE `backend/app/main.py`
-- CREATE `backend/tests/test_impact.py`
-
-**Evidenced by:** `cd backend && uv run pytest tests/test_impact.py -v` — asserts the
-reconciliation to 1e-6, asserts the contribution ordering, and asserts
-`GET /impact/portfolio` returns the portfolio payload rather than a 404 or a symbol payload.
-Run before replying, output pasted.
-
-## T11 — OpenAPI hardening and schema emission
-
-**Objective:** Give every route an explicit operation id and a tag, pin the schema version the
-generator accepts, and emit the schema to a file by importing the app, so the client generator
-needs no running server.
-**Outcome:** `backend/openapi.json` exists on disk and declares `"openapi": "3.0.2"`; all 13
-operations carry an explicit `operationId` and at least one tag; no operation id matches the
-FastAPI default form `<name>_<path>_<method>`. → serves **O7**, **O13**
-**Reads:** every router created by T6–T10, `backend/app/main.py`
-**Deliverables:**
-- UPDATE `backend/app/main.py` — set `app.openapi_version = "3.0.2"`
-- ADD function `generate_unique_id(route) -> str` in `backend/app/main.py`
-- CREATE `backend/scripts/emit_openapi.py`
-- CREATE `backend/openapi.json`
-- CREATE `backend/tests/test_openapi.py`
-
-**Evidenced by:** `cd backend && uv run python scripts/emit_openapi.py && uv run pytest
-tests/test_openapi.py -v` — asserts the emitted file's `openapi` field is exactly `3.0.2`,
-asserts all 12 operations carry an explicit id and a tag, and asserts none matches the
-default-name pattern. Run before replying, output pasted.
 
 ## T12 — Angular workspace and the generated client
 
@@ -722,7 +387,7 @@ above every other element. Recorded `UNVERIFIED`; carried to the final review wa
 **Objective:** Fill the macro strip slot with the five macro drivers, so the factor set is
 visible as moving prices.
 **Outcome:** Five tiles render, one per factor, in factor order, subscribed to the shared
-poll rather than polling independently. → serves **O12**, **O14**
+poll rather than polling independently. → serves **O14**
 **Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/macro/macro-strip.component.ts`
@@ -785,7 +450,7 @@ for human review before commit.
 **Objective:** Fill the movers slot with gainers, losers and most active as three lists that
 repopulate under a scenario.
 **Outcome:** Three lists render in the order the API returns, with no client-side re-sorting.
-→ serves **O11**
+→ serves no outcome directly; it renders what **O11** guarantees in the backend spec
 **Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/movers/movers.component.ts`
@@ -819,7 +484,7 @@ the poll interval. Recorded `UNVERIFIED`; carried to the final review walk, not 
 **Objective:** Fill the ticker slot with the active scenario's canned headlines, so the
 causality reads to a non-technical audience.
 **Outcome:** The strip shows the active scenario's headlines, and the baseline's while at
-baseline. → serves **O21**
+baseline. → serves **O26**
 **Reads:** `frontend/src/app/core/scenario.service.ts`, `frontend/src/app/api/`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/ticker/headline-ticker.component.ts`
