@@ -1,7 +1,7 @@
 """`Bar`'s fields, the 5000-bar cap and the two session-relative queries.
 
 Every expected value below is a literal computed by hand from the Definitions —
-the eight field names, the five factor names, the cap of 5000, and the arithmetic
+the eight field names, the five factor keys, the cap of 5000, and the arithmetic
 of `day change %` and *session volume* over the hand-built bars in this file. None
 of them is read back off the implementation: a test that asks the code what it does
 cannot fail when the code is wrong.
@@ -18,7 +18,9 @@ The arithmetic, shown once here so the literals below can be checked by eye:
   150.0 of volume on ticks 385-389 belongs to the previous session and is excluded.
   Truncated at tick 390 the window is that one bar: `(50.0 / 50.0 - 1) * 100 = 0.0`
   and `100.0`. Truncated at tick 391 it is two: `(51.0 / 50.0 - 1) * 100 = 2.0` and
-  `100.0 + 200.0 = 300.0`.
+  `100.0 + 200.0 = 300.0`. Truncated at tick 389 the latest bar is 389, whose
+  session start is tick 0 — a bar the buffer does not hold, so `day change %`
+  raises while *session volume* returns the 150.0 it does hold.
 
 The field-set and attribution assertions are here because no session-window query
 reads `contributions` or `residual` — the cap and the two queries would pass
@@ -35,18 +37,19 @@ import pytest
 
 from app.buffer import CAPACITY, FACTORS, Bar, RingBuffer
 
-# The five factors, written out rather than imported, so a rename in the module
-# under test fails here instead of silently agreeing with itself.
-THE_FIVE_FACTORS = ["market", "rates/duration", "oil", "USD", "credit spread"]
+# The five factor keys, written out rather than derived, so a rename in the module
+# under test fails here instead of silently agreeing with itself. Identifier-style:
+# these are the keys, not the prose names of the factors.
+THE_FIVE_FACTORS = ["market", "rates", "oil", "usd", "credit"]
 
 # One hand-picked attribution: five contributions and a residual, all literals.
 # 0.0010 - 0.0004 + 0.0025 - 0.0006 + 0.0003 = 0.0028, and 0.0028 + 0.0007 = 0.0035.
 ATTRIBUTION: dict[str, float] = {
     "market": 0.0010,
-    "rates/duration": -0.0004,
+    "rates": -0.0004,
     "oil": 0.0025,
-    "USD": -0.0006,
-    "credit spread": 0.0003,
+    "usd": -0.0006,
+    "credit": 0.0003,
 }
 RESIDUAL = 0.0007
 CONTRIBUTIONS_SUM = 0.0028
@@ -114,7 +117,7 @@ def test_bar_carries_exactly_the_eight_stated_fields() -> None:
     }
 
 
-def test_the_five_factor_names_are_exactly_the_five() -> None:
+def test_the_five_factor_keys_are_exactly_the_five_in_factor_order() -> None:
     assert list(FACTORS) == THE_FIVE_FACTORS
 
 
@@ -129,10 +132,10 @@ def test_bar_stores_the_attribution_it_was_given() -> None:
     one = bar(390, 50.0, 100.0)
 
     assert one.contributions["market"] == 0.0010
-    assert one.contributions["rates/duration"] == -0.0004
+    assert one.contributions["rates"] == -0.0004
     assert one.contributions["oil"] == 0.0025
-    assert one.contributions["USD"] == -0.0006
-    assert one.contributions["credit spread"] == 0.0003
+    assert one.contributions["usd"] == -0.0006
+    assert one.contributions["credit"] == 0.0003
     assert one.residual == 0.0007
     # O5's reconciliation is stored, not recomputed: the parts are still here to add.
     assert sum(one.contributions.values()) == pytest.approx(CONTRIBUTIONS_SUM, abs=1e-12)
@@ -145,13 +148,19 @@ def test_bar_stores_the_attribution_it_was_given() -> None:
     ("contributions", "case"),
     [
         (
+            {"market": 0.0010, "rates": -0.0004, "oil": 0.0025, "usd": -0.0006},
+            "one factor missing",
+        ),
+        (
             {
                 "market": 0.0010,
-                "rates/duration": -0.0004,
+                "rates": -0.0004,
                 "oil": 0.0025,
-                "USD": -0.0006,
+                "usd": -0.0006,
+                "credit": 0.0003,
+                "momentum": 0.0001,
             },
-            "one factor missing",
+            "a sixth key that is not a factor",
         ),
         (
             {
@@ -160,15 +169,14 @@ def test_bar_stores_the_attribution_it_was_given() -> None:
                 "oil": 0.0025,
                 "USD": -0.0006,
                 "credit spread": 0.0003,
-                "momentum": 0.0001,
             },
-            "a sixth key that is not a factor",
+            "the prose names rather than the identifier-style keys",
         ),
         ({}, "no entries at all"),
     ],
-    ids=["missing-factor", "extra-key", "empty"],
+    ids=["missing-factor", "extra-key", "prose-names", "empty"],
 )
-def test_bar_rejects_contributions_that_are_not_exactly_the_five_factors(
+def test_bar_rejects_contributions_that_are_not_exactly_the_five_factor_keys(
     contributions: dict[str, float], case: str
 ) -> None:
     with pytest.raises(ValueError):
@@ -294,26 +302,47 @@ def test_one_tick_past_the_session_start_the_window_is_two_bars() -> None:
 def test_the_first_session_reads_from_tick_zero() -> None:
     buffer = buffer_of(FIRST_SESSION_BARS)
 
+    # Session start is tick 0 and the bar at tick 0 is held, so the first session
+    # is determined: (96.0 / 100.0 - 1) * 100 = -4.0.
     assert buffer.day_change_pct() == pytest.approx(-4.0, abs=1e-9)
     assert buffer.session_volume() == 100.0
 
 
-def test_a_session_figure_is_not_invented_where_the_definitions_do_not_reach() -> None:
-    """Two cases the Definitions leave undetermined; reported, not chosen.
+def test_the_first_bar_of_the_first_session_shows_no_change() -> None:
+    buffer = buffer_of(FIRST_SESSION_BARS[:1])
 
-    Neither arises under the 780-tick backfill or under eviction at the 5000-bar
-    cap. Until they are settled, both refuse rather than return a number: an empty
-    buffer has no latest bar, and a buffer whose oldest bar falls after the session
-    start has no close *at* the session start to divide by.
-    """
+    assert buffer.latest().t == 0
+    assert buffer.day_change_pct() == pytest.approx(0.0, abs=1e-9)
+    assert buffer.session_volume() == 10.0
+
+
+# ── Buffer boundaries: day change refuses, session volume is determined ────
+
+
+def test_day_change_pct_raises_on_an_empty_buffer() -> None:
     with pytest.raises(ValueError):
         RingBuffer().day_change_pct()
 
-    with pytest.raises(ValueError):
-        RingBuffer().session_volume()
 
-    # Ticks 385-389: the latest is 389, so the session start is tick 0 — absent.
+def test_day_change_pct_raises_when_the_session_start_bar_is_not_held() -> None:
+    # Ticks 385-389: the latest is 389, whose session start is tick 0 — a bar this
+    # buffer does not hold. Dividing by tick 385's close would report -45.0 here
+    # once tick 395 arrives, and returning 0.0 would report a flat day. Neither is
+    # honest, so the query refuses.
     short = buffer_of(BOUNDARY_BARS[:5])
+
     assert short.latest().t == 389
+    assert short.bars()[0].t == 385
     with pytest.raises(ValueError):
         short.day_change_pct()
+
+
+def test_session_volume_is_the_sum_held_when_the_session_start_bar_is_not_held() -> None:
+    # The same buffer day change refuses on. 10.0 + 20.0 + 30.0 + 40.0 + 50.0 = 150.0.
+    short = buffer_of(BOUNDARY_BARS[:5])
+
+    assert short.session_volume() == 150.0
+
+
+def test_session_volume_on_an_empty_buffer_is_the_sum_of_nothing() -> None:
+    assert RingBuffer().session_volume() == 0.0
