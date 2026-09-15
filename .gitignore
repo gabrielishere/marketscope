@@ -1,0 +1,20 @@
+# The builder method is independently versioned — see .claude/.git
+.claude/
+
+.DS_Store
+
+# Python — backend/
+**/__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node — frontend/
+node_modules/
+.angular/
+dist/
+
+# Deliberately NOT ignored, because tasks downstream read them:
+#   backend/openapi.json        T11 writes it, T12 generates the client from it
+#   frontend/src/app/api/       committed so the frontend builds without the backend
+#   .spec-artifacts/            specs, prompts, decisions and run records are the record
