@@ -59,6 +59,13 @@ non-technical audience in a single view.
 - **O23** No component source contains a hex colour, a `px` value or a millisecond duration;
   every such value resolves through a custom property declared in
   `frontend/src/styles/tokens.css`.
+- **O24** The app has two routes — `/` (dashboard) and `/markets` (table) — and the toolbar,
+  its `Simulated feed` label and the active-scenario chip persist across both. Switching
+  between them does not create a second `/quotes` poll: the request rate with both tabs
+  visited is the same as with one.
+- **O25** The markets table lists every instrument in the universe, grouped by sector, each
+  group headed by its aggregate day change; sector groups order by that aggregate, and rows
+  order within a group by the selected column. Activating a scenario reorders the groups.
 
 # Constraints
 
@@ -193,11 +200,15 @@ nothing below it matters.
 | | Task | The check |
 |---|---|---|
 | **F1** | T22 | selecting a scenario changes the data without waiting out the poll |
+| **F1b** | T26 | the oil shock reorders the market table's sector groups, energy above travel |
 | **F2** | T21 | the movers lists repopulate under the oil shock |
 | **F3** | T19 | the activation marker appears, and is absent at baseline |
 | **F4** | T24 | the collapsed impact panel reads as plain language, no exposure values |
 | **F5** | T23 | the headlines swap within one refresh |
 | **F6** | T14 | one `/quotes` request per interval with two views open |
+| **F6b** | T26 | switching to the markets tab and back does not add a second poll |
+| **F6c** | T26 | the table's scroll position survives a poll, and the pane never resizes |
+| **F6d** | T13 | the toolbar, its label and the scenario chip persist across both tabs |
 | **F7** | T17 | no column boundary moves as a price crosses a digit width |
 | **F8** | T17 | rising rows flash green, falling red |
 | **F9** | T15 | one summary block per currency, nothing summed across them |
@@ -239,8 +250,19 @@ are what stop twelve components each inventing their own greys and spacing.
 - **Every data surface declares its loading and empty states.** A pane awaiting its first
   poll shows a skeleton at the final layout's dimensions, never a blank area that then
   reflows.
-- **Density over airiness.** Watchlist and movers rows are a stated fixed height; the
-  dashboard shows the whole watchlist without scrolling at 1440×900.
+- **Density over airiness.** Watchlist, movers and market-table rows are a stated fixed
+  height, the same one across all three. The two surfaces then differ:
+  - **The dashboard's watchlist is curated and does not scroll.** It shows its whole
+    contents at 1440×900. A watchlist long enough to scroll is the markets tab's job.
+  - **The markets table scrolls inside a fixed-height pane** under a sticky header. The pane's
+    height never changes as rows update, and the scroll position survives a poll — a table
+    that jumps back to the top every two seconds is unusable, and it is the failure this rule
+    exists to prevent.
+- **A polled table re-renders only what changed.** The market table is ~40 rows each carrying
+  a sparkline, redrawn every 2–3 seconds. Rows track by symbol and the component uses
+  `OnPush`, so a poll updates the cells that moved rather than rebuilding the table. Without
+  this the flash animation restarts on every row each poll, which reads as flicker rather
+  than as signal.
 
 # Shared
 
@@ -421,7 +443,10 @@ instrument's bar count by exactly one. Run before replying, output pasted.
 **Objective:** Serve symbol search, the polled quote set and the chart series off the buffer,
 so the frontend has prices to display.
 **Outcome:** `GET /symbols?q=` fuzzy-matches symbol and name and returns no non-matching
-instrument; `GET /quotes?symbols=` returns one quote per requested symbol in request order
+instrument, and with `q` omitted or empty returns the whole universe with each entry's name,
+sector, currency and decimal places — this being how the markets table loads its static
+metadata once instead of per poll; `GET /quotes?symbols=` returns one quote per requested
+symbol in request order
 carrying last price, `day change %` as the Definitions define it, and a sparkline;
 `GET /candles/{symbol}?tf=` aggregates the buffer into 1m, 5m, 15m and session bars, and an
 unknown `tf` is rejected rather than silently defaulted. → serves **O7**
@@ -559,7 +584,8 @@ running and no file created by a later task present. → serves **O13**
 - CREATE `frontend/tsconfig.app.json`
 - CREATE `frontend/src/index.html`
 - CREATE `frontend/src/main.ts` — bootstraps the root standalone component
-- CREATE `frontend/src/app/app.config.ts` — provides `HttpClient` and the API base URL
+- CREATE `frontend/src/app/app.config.ts` — provides `HttpClient`, the API base URL and `provideRouter`
+- CREATE `frontend/src/app/app.routes.ts` — `/` → dashboard, `/markets` → markets table
 - CREATE `frontend/ng-openapi-gen.json`
 - CREATE `frontend/src/app/api/`
 
@@ -577,10 +603,11 @@ from this task onward and the eleven that follow each fill one file nobody else 
 scale, the type scale, the radii and the motion durations as custom properties, with body
 text meeting 4.5:1 against its background; `format.ts` exports the price, quantity and signed
 percentage formatters, the last emitting U+2212 for negatives; the shell renders a toolbar
-containing the exact string `Simulated feed`; the dashboard composes all ten feature slots
-with the portfolio summary first; every slot renders a skeleton at its final dimensions; and
-no component source declares a hex colour, a `px` value or a millisecond duration.
-→ serves **O16**, **O17**, **O23**
+containing the exact string `Simulated feed` and a two-tab navigation — Dashboard and
+Markets — **outside** the `router-outlet`, so no route can render without them; the dashboard
+composes all ten feature slots with the portfolio summary first; every slot renders a
+skeleton at its final dimensions; and no component source declares a hex colour, a `px` value
+or a millisecond duration. → serves **O16**, **O17**, **O23**, **O24**
 **Reads:** `frontend/src/app/app.config.ts`
 **Deliverables:**
 - CREATE `frontend/src/styles/tokens.css`
@@ -588,13 +615,17 @@ no component source declares a hex colour, a `px` value or a millisecond duratio
 - CREATE `frontend/src/app/core/format.ts`
 - ADD function `formatPrice(value: number, dp: number) -> string`, `formatQuantity(value: number) -> string`, `formatSignedPercent(value: number) -> string` in `frontend/src/app/core/format.ts`
 - CREATE `frontend/src/app/shell/shell.component.ts`
-- CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the ten slots in final order, portfolio summary first
+- CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the ten slots in final order, portfolio summary first; routed at `/`
+- CREATE `frontend/src/app/features/markets/markets.component.ts` as a skeleton placeholder; routed at `/markets`
 - FOR EACH slot in `portfolio-summary`, `macro-strip`, `watchlist`, `symbol-search`, `movers`, `scenario-selector`, `headline-ticker`, `detail`, `trade-ticket`, `impact-panel` — CREATE its component file as a skeleton placeholder at final dimensions
 - UPDATE `frontend/src/main.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
 `grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+px|[0-9]+ms' src/app --include='*.ts'` — must return no
-match, and the command is run from `frontend/` so the path resolves. Then paste `tokens.css`
+match, and the command is run from `frontend/` so the path resolves. Then paste the shell
+template showing the tab navigation, the `router-outlet` and the literal `Simulated feed`
+outside the outlet, so that it is structurally impossible for a route to render without it.
+Then paste `tokens.css`
 in full with the computed contrast ratio for body text on the page background, and paste the
 `dependencies` block of `package.json`. Then paste `dashboard.component.ts`'s template,
 which must show all ten slot selectors with `portfolio-summary` first, and the shell's
@@ -798,3 +829,34 @@ three in the template rather than by the data happening to be short.
 **Deferred to human review:** the collapsed panel reads as plain language with no exposure
 values; expanding reveals the full attribution; peers are same-sector and ranked by impact.
 Recorded `UNVERIFIED`; held for human review before commit.
+
+## T26 — Markets table
+
+**Objective:** Fill the `/markets` route with the full-universe table — every instrument,
+grouped by sector, each group headed by its aggregate day change — so that a scenario reads
+as market-wide rather than as something confined to a curated watchlist.
+
+*This is the surface the factor model is visible on.* `app-features.md:54` chose the universe
+so scenarios "produce visible disagreement within sectors as well as between them", and
+`:172-175` is explicit that a coarse sector rule would be wrong — under an oil spike a
+producer gains while an airline suffers. Scattered through a flat list that is invisible.
+Grouped, with energy rising above travel as the shock lands, it needs no explanation.
+
+**Outcome:** The table lists every instrument the universe holds, grouped by sector, each
+group headed by its aggregate day change; sector groups order by that aggregate and rows
+order within a group by the selected column; the header row is sticky and the body scrolls
+inside a pane whose height does not change and whose scroll position survives a poll; rows
+track by symbol under `OnPush`; and static metadata comes from one `GET /symbols` at load
+rather than from each poll. → serves **O14**, **O22**, **O25**
+**Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`,
+`frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
+**Deliverables:**
+- UPDATE `frontend/src/app/features/markets/markets.component.ts`
+- CREATE `frontend/src/app/features/markets/market-row.component.ts`
+
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component
+showing `ChangeDetectionStrategy.OnPush`, a `trackBy` keyed on symbol, the single
+`GET /symbols` call outside the poll subscription, and the pane's fixed-height style with the
+sticky header — all as token references.
+**Deferred to human review:** checklist items **F1b**, **F6b** and **F6c**. Recorded
+`UNVERIFIED`; held for human review before commit.
