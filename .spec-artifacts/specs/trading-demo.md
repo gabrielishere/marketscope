@@ -135,10 +135,12 @@ Bounds on how the system is built. Every line is binding on every task.
   actually produce — a build, a file, a grep — and its behavioural claim is **deferred to
   human review**; *Frontend evidence* below is the rule those tasks are written against. Every
   frontend outcome is recorded `UNVERIFIED`, which is the expected result and not a gap.
-- **Frontend tasks are not committed before human review.** T13–T26 land their deliverables
-  and their run record, and the orchestrator stops at the review boundary rather than
-  committing. This varies the standing commit rule, which `log-schema.md:196-200` allows a
-  spec to do here. Backend tasks are unaffected.
+- **Frontend tasks are not committed before human review.** T13–T24 and T26 land their
+  deliverables and their run record, and the orchestrator stops at the review boundary rather
+  than committing. This varies the standing commit rule, which `log-schema.md:196-200` allows a
+  spec to do here. Backend tasks are unaffected — including **T25**, which sits inside that
+  range by reading order but is the backend tick engine and commits at verification like every
+  other backend task.
 - No price-level literal is asserted in any test — see the last bullet of this section.
 
 **The environment**
@@ -244,8 +246,9 @@ judged at human review; the rules below are the part that is not a matter of tas
 are what stop twelve components each inventing their own greys and spacing.
 
 - **One token file is the only source of visual values.** No component declares a raw hex
-  colour, a `px` font size, a `px` spacing value or a motion duration of its own. Everything
-  references a custom property from `frontend/src/styles/tokens.css`.
+  colour, a `px` value of any kind — type size, spacing, border width or radius — or a motion
+  duration of its own. Everything references a custom property from
+  `frontend/src/styles/tokens.css`. This is the same ban O23 states; the two are one rule.
 - **Numerals are tabular.** Every price, percentage and quantity renders in a
   `font-variant-numeric: tabular-nums` face, so digits occupy constant width.
 - **No layout shift on poll.** Numeric columns are fixed-width and decimal-aligned; a price
@@ -296,6 +299,10 @@ are what stop twelve components each inventing their own greys and spacing.
   feature slot in its final order at T13 and **is not edited again**. Feature tasks fill
   their own stub and touch nothing shared — created by **T13**
 - `frontend/src/app/core/quote.service.ts` — the single shared poll — created by **T14**
+- `frontend/src/app/core/watchlist.service.ts` — the watchlist's symbol list and the only way
+  to add to it, so search can write where the watchlist reads — created by **T17**
+- `frontend/src/app/core/scenario.service.ts` — the active scenario and its headlines, read by
+  the selector and the ticker — created by **T22**
 
 **On the stubs.** T13 creates every feature component as a skeleton placeholder rendering its
 loading state, and the dashboard composes all ten from the start. Two things follow. The app
@@ -364,8 +371,9 @@ Run before replying, output pasted.
 plus a scenario-level volatility multiplier and its headlines, and load it behind a typed id
 enum, so that adding a scenario is a data edit.
 **Outcome:** The loader returns 6 or 7 scenarios including a baseline whose every shock and
-drift is zero; each non-baseline scenario names at least two factors and carries 2 or 3
-headlines; the id enum's members equal the ids present in the JSON. → serves **O20**, **O21**
+drift is zero and an oil supply shock; every scenario, baseline included, carries 2 or 3
+headlines; each non-baseline scenario names at least two factors; the id enum's members equal
+the ids present in the JSON. → serves **O20**, **O21**
 **Reads:** `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/data/scenarios.json`
@@ -529,9 +537,10 @@ Run before replying, output pasted.
 
 **Objective:** Expose the scenario library, the active scenario and its activation, deletion
 and headlines, so the dropdown has something to drive.
-**Outcome:** `POST /scenario` sets the active scenario and stamps `activated_at`; `DELETE
-/scenario` returns to baseline; `GET /scenario` reports the active id, its headlines and
-`activated_at`; bars written before activation are unchanged by it. → serves **O6**, **O21**
+**Outcome:** `GET /scenarios` lists the library; `POST /scenario` sets the active scenario and
+stamps `activated_at`; `DELETE /scenario` returns to baseline; `GET /scenario` reports the
+active id, its headlines and `activated_at`; bars written before activation are unchanged by
+it. → serves **O6**, **O21**
 **Reads:** `backend/app/state.py`, `backend/app/scenarios.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/scenario.py`
@@ -597,7 +606,8 @@ running and no file created by a later task present. → serves **O13**
 **Reads:** `backend/openapi.json`
 **Deliverables:**
 - CREATE `frontend/package.json` with a `gen:api` script and no UI or styling dependency
-- CREATE `frontend/angular.json`
+- CREATE `frontend/angular.json` — registering `src/styles.css` as the sole global stylesheet
+- CREATE `frontend/src/styles.css` — empty; T13 fills it
 - CREATE `frontend/tsconfig.json`
 - CREATE `frontend/tsconfig.app.json`
 - CREATE `frontend/src/index.html`
@@ -608,8 +618,12 @@ running and no file created by a later task present. → serves **O13**
 - CREATE `frontend/src/app/api/`
 
 **Evidenced by:** `cd frontend && npm install && npm run gen:api && npx ng build` — run with
-no backend process running, output pasted. Then `grep -rc 'Observable<' src/app/api/services`
-and report the operation count, confirming it is 13.
+no backend process running, output pasted. Then, from `backend/`,
+`grep -o '"operationId": "[^"]*"' openapi.json | sort -u | wc -l` — confirming it is 13. Then,
+from `frontend/`, confirm each of those 13 operation ids appears at least once under
+`src/app/api/`, output pasted. Count against the contract, not against the generator's output
+shape — a per-file `grep -c` reports one line per file and the emitter may write more than one
+symbol per operation, so neither yields 13.
 **Deferred to human review:** none — this task's outcome is fully established by the build.
 
 ## T13 — Design system, shell and dashboard composition
@@ -629,13 +643,13 @@ or a millisecond duration. → serves **O16**, **O17**, **O23**, **O24**
 **Reads:** `frontend/src/app/app.config.ts`
 **Deliverables:**
 - CREATE `frontend/src/styles/tokens.css`
-- CREATE `frontend/src/styles.css`
+- UPDATE `frontend/src/styles.css` — imports `styles/tokens.css`
 - CREATE `frontend/src/app/core/format.ts`
 - ADD function `formatPrice(value: number, dp: number) -> string`, `formatQuantity(value: number) -> string`, `formatSignedPercent(value: number) -> string` in `frontend/src/app/core/format.ts`
 - CREATE `frontend/src/app/shell/shell.component.ts`
 - CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the ten slots in final order, portfolio summary first; routed at `/`
 - CREATE `frontend/src/app/features/markets/markets.component.ts` as a skeleton placeholder; routed at `/markets`
-- FOR EACH slot in `portfolio-summary`, `macro-strip`, `watchlist`, `symbol-search`, `movers`, `scenario-selector`, `headline-ticker`, `detail`, `trade-ticket`, `impact-panel` — CREATE its component file as a skeleton placeholder at final dimensions
+- FOR EACH path in `features/portfolio/portfolio-summary.component.ts`, `features/macro/macro-strip.component.ts`, `features/watchlist/watchlist.component.ts`, `features/search/symbol-search.component.ts`, `features/movers/movers.component.ts`, `features/scenario/scenario-selector.component.ts`, `features/ticker/headline-ticker.component.ts`, `features/detail/detail.component.ts`, `features/portfolio/trade-ticket.component.ts`, `features/impact/impact-panel.component.ts` — CREATE it under `frontend/src/app/` as a skeleton placeholder at final dimensions. These are the exact paths T15–T24 later `UPDATE`; a different directory breaks eleven tasks.
 - UPDATE `frontend/src/main.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
@@ -732,8 +746,10 @@ each poll without changing its box. On first load the list is the symbols held i
 **Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`,
 `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
+- CREATE `frontend/src/app/core/watchlist.service.ts` — holds the symbol list; the component renders it and T18 adds to it
+- ADD var `WATCHLIST_EXTRAS` in `frontend/src/app/core/watchlist.service.ts` — three symbols from sectors that move *against* the holdings, so the dashboard shows disagreement and not only the markets tab
+- ADD function `add(symbol: string)` in `frontend/src/app/core/watchlist.service.ts`
 - UPDATE `frontend/src/app/features/watchlist/watchlist.component.ts`
-- ADD var `WATCHLIST_EXTRAS` in `frontend/src/app/features/watchlist/watchlist.component.ts` — three symbols from sectors that move *against* the holdings, so the dashboard shows disagreement and not only the markets tab
 - CREATE `frontend/src/app/features/watchlist/sparkline.component.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the row styles,
@@ -749,13 +765,14 @@ review before commit.
 a result to the watchlist.
 **Outcome:** Typing a partial symbol or name lists matching instruments and no non-matching
 one; selecting a result adds it to the watchlist. → serves **O14**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/watchlist/watchlist.component.ts`, `frontend/src/styles/tokens.css`
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/watchlist.service.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - UPDATE `frontend/src/app/features/search/symbol-search.component.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
 confirm results come from `GET /symbols` rather than from client-side filtering of a quote
-set.
+set, and that selecting a result calls `WatchlistService.add()` rather than mutating the
+watchlist component.
 **Deferred to human review:** a two-character query lists matches and omits a known
 non-match; selecting one adds it to the watchlist. Recorded `UNVERIFIED`; held for human
 review before commit.
