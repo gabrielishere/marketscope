@@ -28,6 +28,10 @@ per-holding breakdown and is never resolved as a symbol lookup.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - **Route ordering is load-bearing, not stylistic.** `GET /impact/portfolio` must be declared
   **before** `GET /impact/{symbol}` in the same router. Declared the other way round, FastAPI
   matches `portfolio` as a symbol and the portfolio breakdown becomes an instrument lookup for

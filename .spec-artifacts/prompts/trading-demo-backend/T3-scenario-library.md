@@ -29,6 +29,10 @@ present in the JSON.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - The five factors, by key, are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
   order — see **Factor keys** in the spec's Definitions. Use the key strings verbatim.
 - **Baseline carries headlines like any other scenario.** The ticker shows the baseline's

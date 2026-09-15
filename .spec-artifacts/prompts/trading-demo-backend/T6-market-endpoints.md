@@ -30,6 +30,10 @@ rather than silently defaulted.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - **`day change %`** is `(close_latest / close_at_session_start − 1) × 100`, read off the
   buffer via `RingBuffer.day_change_pct`. Every surface uses that method and no other — a
   route computing it independently is the defect this evidence exists to catch.

@@ -24,10 +24,18 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
   order at the cap boundary; and asserts `day_change_pct` and `session_volume` against bars
   constructed by hand across a known tick-390 boundary, with expected values written as
   literals derived from the Task context rather than read out of the implementation. Run
-  before replying and paste the output.
+  before replying and paste the output. The suite must also assert that `day_change_pct`
+  raises on an empty buffer and on one whose oldest bar falls after session start, and that
+  `session_volume` on the latter returns the sum of what it holds — that behaviour is required
+  by **Buffer boundaries**, so a suite that omits it stays green while the behaviour is
+  missing.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - **`Bar` fields, exactly:** `t: int` (tick index), `open`, `high`, `low`, `close: float`,
   `volume: float`, `contributions: dict[str, float]` with exactly one entry per factor, and
   `residual: float`.
@@ -38,6 +46,13 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
   other.
 - **Session volume.** The sum of `volume` over every bar from session start to the latest bar.
   This is what the movers endpoint ranks *most active* on.
+- **Buffer boundaries.** `day_change_pct` on an empty buffer, or on one whose oldest bar falls
+  after the current session start, **raises** rather than returning a figure. There is no
+  honest number for a session whose opening bar is not held, and a fallback to the oldest bar
+  or to `0.0` would quietly misreport every surface that displays day change. `session_volume`
+  on such a buffer is determined and returns the sum of what it holds. Neither case arises in
+  the assembled system — backfill starts at tick 0 and the 5000-bar cap is about 12.8 sessions
+  — but the behaviour is required, not incidental.
 - **The five factor keys are exactly `market`, `rates`, `oil`, `usd`, `credit`, in that
   order.** They key `contributions`, and they are the only thing you take from outside this
   module. Use these strings verbatim — they are identifier-style on purpose and are not the
@@ -78,8 +93,10 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
 - No price level is asserted as a simulated value; hand-constructed bars are not price
   literals in the prohibited sense, and are required here.
 - The cap is 5000 and the eviction is oldest-first. Do not make either configurable.
-- If the definitions above leave a boundary case undetermined — the first session, a buffer
-  shorter than one session — STOP and report which, rather than choosing silently.
+- The boundary cases are settled above and are not yours to decide. **The first session is
+  determined** — session start is tick 0, the bar at tick 0 is present, and `day change %`
+  there is `0.0`. If some *other* boundary case is genuinely undetermined by the definitions
+  above, STOP and report which, rather than choosing silently.
 
 # Response format
 

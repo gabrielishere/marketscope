@@ -36,6 +36,10 @@ a required field removed.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - Python is pinned to 3.12 via `backend/.python-version`; `uv` reads it.
 - The frontend is cross-origin in development, so without CORS middleware no request reaches
   the API at all. This is why the preflight is evidence rather than a nicety.

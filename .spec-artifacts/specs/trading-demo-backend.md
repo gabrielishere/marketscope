@@ -334,9 +334,11 @@ per factor keyed by the five factor names, and that a `Bar` cannot be constructe
 `contributions` or without `residual`; asserts the cap and the eviction order at the cap
 boundary; and asserts `day_change_pct` and `session_volume` against bars constructed by hand
 across a known tick-390 boundary, with the expected values written as literals taken from the
-Definitions rather than from the code. The field-set assertions exist because a session-window
-query reads only `t`, `close` and `volume` — without them this suite passes against a `Bar`
-carrying no attribution at all. Run before replying, output pasted.
+Definitions rather than from the code; and asserts that `day_change_pct` raises on an empty
+buffer and on one whose oldest bar falls after session start, per **Buffer boundaries**, while
+`session_volume` on the latter returns the sum of what it holds. The field-set assertions exist
+because a session-window query reads only `t`, `close` and `volume` — without them this suite
+passes against a `Bar` carrying no attribution at all. Run before replying, output pasted.
 
 ## T25 — The tick engine
 

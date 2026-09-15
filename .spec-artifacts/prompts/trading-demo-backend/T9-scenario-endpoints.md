@@ -26,6 +26,10 @@ its headlines and `activated_at`. Bars written before activation are unchanged b
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - **`activated_at` is the tick index at which the active scenario was activated.** It lives on
   the application state, set by `POST /scenario` and cleared by `DELETE /scenario`. It is not
   a `Bar` field. Two later surfaces read it: the detail chart draws its marker there, and the

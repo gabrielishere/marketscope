@@ -28,6 +28,10 @@ loop's behaviour is the function's.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - Startup backfills 780 ticks, which at 390 ticks to a session establishes exactly two prior
   sessions — enough for `day_change_pct` to have a session boundary behind it.
 - **The backfill starts at tick index 0.** `RingBuffer.day_change_pct` raises when the bar at

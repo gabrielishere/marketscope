@@ -26,6 +26,10 @@ default form `<name>_<path>_<method>`.
 
 # Task context
 
+- Anything below restated from the spec reproduces `## Definitions` and `## Response models`
+  in `.spec-artifacts/specs/trading-demo-backend.md`. **If this prompt and the spec
+  disagree, the spec governs**, and the disagreement is a defect to report rather than one
+  to resolve. Read that file if a term here is thinner than the work needs.
 - **The 12 operations** are: `GET /symbols`, `GET /quotes`, `GET /candles/{symbol}` (T6);
   `GET /portfolio` (T7); `GET /movers`, `GET /macro` (T8); `GET /scenarios`, `GET /scenario`,
   `POST /scenario`, `DELETE /scenario` (T9); `GET /impact/portfolio`, `GET /impact/{symbol}`
