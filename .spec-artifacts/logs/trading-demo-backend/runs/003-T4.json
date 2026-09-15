@@ -1,0 +1,29 @@
+{
+  "seq": 3,
+  "spec": "trading-demo-backend",
+  "task": "T4",
+  "dispatched": false,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T4-bar-and-ring-buffer.md",
+
+  "started": "2026-09-15T23:25:50Z",
+  "ended": "2026-09-15T23:26:45Z",
+  "duration_s": 55,
+
+  "model": { "requested": "claude-opus-5", "actual": null },
+  "usage": { "turns": null, "input": null, "output": null,
+             "cache_write": null, "cache_read": null },
+
+  "gate": {
+    "passed": false,
+    "defect": "Outcome clause 1 of 3 has no evidence. The Outcome opens 'Bar carries exactly the fields named below' — t, open, high, low, close, volume, contributions (one entry per factor) and residual — but the Evidenced-by asserts only the cap, the eviction order, day_change_pct and session_volume. None of those four reads contributions or residual, so test_buffer.py as specified passes unchanged against a Bar that omits both. Those two fields are what O5's reconciliation is stored in and what T25, T5 and T10 read. This also fails gate question 3: the named evidence would not fail if the implementation were wrong. The spec's T4 block carries the identical gap, so the prompt and the spec agree and the defect is in both."
+  },
+
+  "deliverables": [],
+  "evidence": [],
+
+  "status": { "run": "REFUSED", "deliverables": "—", "outcome": "—" },
+  "commits": { "deliverables": null, "log": null },
+  "escalations": [
+    "T4 refused before dispatch: the one thing the task declares about Bar is the one thing its evidence does not check. Same defect class the author repaired in T1 by adding field-set assertions."
+  ]
+}
