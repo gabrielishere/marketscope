@@ -56,9 +56,9 @@ non-technical audience in a single view.
 - **O22** Across a full poll cycle no numeric column changes width and no row reflows: a
   price moving between `9.99` and `10.01`, or a percentage between `+9.9%` and `+10.1%`,
   leaves every column boundary in the same place.
-- **O23** No component stylesheet contains a hex colour, a `px` font size, a `px` spacing
-  value or a transition duration; every such value resolves through a custom property
-  declared in `frontend/src/styles/tokens.css`.
+- **O23** No component source contains a hex colour, a `px` value or a millisecond duration;
+  every such value resolves through a custom property declared in
+  `frontend/src/styles/tokens.css`.
 
 # Constraints
 
@@ -89,6 +89,10 @@ Quoted from `app-features.md` unless marked. Decisions taken at intake are marke
   `app-features.md:271`
 - Generator is `ng-openapi-gen`, and the output is committed "so the frontend builds without
   the backend running" — `app-features.md:112`
+- "FastAPI emits OpenAPI 3.1 by default, and some generators still expect 3.0. If the
+  generator objects, pin `app.openapi_version = "3.0.2"`" — `app-features.md:123`. This spec
+  pins it unconditionally rather than waiting for the generator to object, because the task
+  that would discover the objection is not the task that can fix it.
 - Off-limits: "WebSockets, offline support, Redis, multi-service deployment, options/greeks,
   customisable multi-pane layouts, order matching against a simulated book" — `app-features.md:320`
 - Off-limits: "User-authored scenarios, timed multi-stage event sequences, estimating betas
@@ -102,10 +106,11 @@ Quoted from `app-features.md` unless marked. Decisions taken at intake are marke
   run is reproducible.
 - **[decided]** Backend outcomes are evidenced by `pytest` and commit at verification, per the
   orchestrator's default.
-- **[decided]** **Frontend outcomes are verified by a human, not by a checker.** A frontend
-  task's evidence is `ng build` succeeding plus the implementor's stated observation of the
-  rendered application, reported verbatim. No frontend test framework is installed and none
-  is to be added. Every frontend outcome is recorded `UNVERIFIED` — this is the expected
+- **[decided]** **Frontend outcomes are verified by a human, not by a checker.** No frontend
+  test framework is installed and none is to be added. A frontend task's evidence is what the
+  implementor can actually produce — a build, a file, a grep — and its behavioural claim is
+  **deferred to human review**. See *Frontend evidence* below; it is the rule those tasks are
+  written against. Every frontend outcome is recorded `UNVERIFIED` — this is the expected
   result, not a gap to be closed.
 - **[decided]** **Frontend tasks are not committed before human review.** T13–T24 land their
   deliverables and their run record, and the orchestrator stops at the review boundary rather
@@ -137,6 +142,47 @@ Quoted from `app-features.md` unless marked. Decisions taken at intake are marke
   asserted as properties: positivity, reconciliation, ordering, boundedness, determinism
   across two runs.
 
+## Definitions
+
+Terms more than one task reads. Each is settled once here; a task that needs one takes it
+from this list rather than deciding it locally, because four tasks deciding the same term
+separately is four different answers with nothing marking which is right.
+
+- **Market time.** One tick is one minute. A **session** is **390 ticks** — a 6.5-hour
+  trading day. The 780-tick backfill therefore establishes exactly two prior sessions.
+- **Session start.** The most recent tick index that is a multiple of 390.
+- **`day change %`.** `(close_latest / close_at_session_start − 1) × 100`, read off the
+  buffer. Every surface that displays or sorts by day change uses this definition and no
+  other — it is shown by T6 and T17, sorted on by T8, and aggregated by T7 and T15.
+- **Session volume.** The sum of `volume` over every bar from session start to the latest
+  bar. This is what `/movers` ranks *most active* on.
+- **`Bar` fields.** `t: int` (tick index), `open`, `high`, `low`, `close: float`,
+  `volume: float`, `contributions: dict[str, float]` with exactly one entry per factor, and
+  `residual: float`. O5's reconciliation is `sum(contributions.values()) + residual` against
+  `log(close / previous_close)`.
+
+## Frontend evidence
+
+The implementor has Read, Write, Edit, Glob, Grep and Bash. **It has no browser.** An
+instruction to report what a rendered page does is an instruction it cannot carry out, and
+`implementor.md:71-74` requires it to say so rather than invent one — so a task written that
+way stalls rather than completing.
+
+Every frontend task therefore splits its evidence in two:
+
+- **Produced by the implementor** — `npx ng build` output, a file pasted, a grep result. Facts
+  about the source tree, which Bash can establish.
+- **Deferred to human review** — the behavioural claim, stated as a numbered checklist the
+  reviewer walks. The implementor **must not** report these as observed, and a report that
+  does is a defect worth escalating rather than a result to record.
+
+**The run must be permitted to:** create and write under `backend/` and `frontend/`; run
+`uv python install 3.12`, `uv venv`, `uv pip install`, `uv sync`, `uv run pytest`,
+`uv run python`, each from `backend/`; run `npm install`, `npm run`, `npx ng build`,
+`npx ng generate`, `npx ng-openapi-gen`, each from `frontend/`. It must not be permitted to
+start a long-running server as evidence for any task, and it must not install a frontend test
+framework.
+
 ## Visual design
 
 The frontend must read as a professional trading product, not as a demo of one. Taste is
@@ -165,13 +211,6 @@ are what stop twelve components each inventing their own greys and spacing.
 - **Density over airiness.** Watchlist and movers rows are a stated fixed height; the
   dashboard shows the whole watchlist without scrolling at 1440×900.
 
-**The run must be permitted to:** create and write under `backend/` and `frontend/`; run
-`uv python install 3.12`, `uv venv`, `uv pip install`, `uv sync`, `uv run pytest`,
-`uv run python`, each from `backend/`; run `npm install`,
-`npm run`, `npx ng build`, `npx ng generate`, `npx ng-openapi-gen`. It must not be permitted
-to start a long-running server as evidence for any task, and it must not install a frontend
-test framework.
-
 # Shared
 
 - `backend/app/models.py` — the Pydantic response models every route returns — created by **T1**
@@ -179,12 +218,22 @@ test framework.
 - `backend/app/scenarios.py` — the scenario library, its loader and the id enum — created by **T3**
 - `backend/app/sim.py` — the tick engine and the ring buffer — created by **T4**
 - `backend/app/state.py` — the in-process store and the accessors every route reads through — created by **T5**
+- `backend/openapi.json` — the emitted contract the client is generated from — created by **T11**
 - `frontend/src/app/api/` — the generated API client — created by **T12**
 - `frontend/src/styles/tokens.css` — the only source of colour, spacing, type, radius and
   motion values; every component reads it and none redeclares one — created by **T13**
 - `frontend/src/app/core/format.ts` — the shared number, price and signed-percentage
   formatters, so no component formats a figure its own way — created by **T13**
+- `frontend/src/app/dashboard/dashboard.component.ts` — the composition: it declares every
+  feature slot in its final order at T13 and **is not edited again**. Feature tasks fill
+  their own stub and touch nothing shared — created by **T13**
 - `frontend/src/app/core/quote.service.ts` — the single shared poll — created by **T14**
+
+**On the stubs.** T13 creates every feature component as a skeleton placeholder rendering its
+loading state, and the dashboard composes all ten from the start. Two things follow. The app
+renders from T13 onward, so a human reviewing T17 sees it in place rather than in isolation —
+which matters when twelve tasks are verified by eye. And the feature tasks each `UPDATE` one
+file nobody else writes, instead of seven of them `UPDATE`-ing the shell in sequence.
 
 # Tasks
 
@@ -194,30 +243,34 @@ Ordered for reading, not for execution.
 
 **Objective:** Create the FastAPI application and the Pydantic models every route returns, so
 that later tasks add routes to an app that already exists and a contract that is already fixed.
-**Outcome:** `cd backend && uv run python -V` reports 3.12; importing `app.main` yields a
-FastAPI instance with CORS enabled; and every model named below is importable and rejects a
-payload missing a required field. → serves **O7**
+**Outcome:** `uv run python -V` reports 3.12; `app.main` exposes a FastAPI instance whose
+CORS middleware answers a cross-origin preflight with an `access-control-allow-origin`
+header; and every model named below rejects a payload with a required field removed.
+→ serves **O7**
 **Reads:** nothing — this is the first task.
 **Deliverables:**
 - CREATE `backend/.python-version` containing `3.12`
-- CREATE `backend/pyproject.toml`
+- CREATE `backend/pyproject.toml` declaring `fastapi`, `pydantic`, and a dev group with `pytest` and `httpx`
 - CREATE `backend/app/main.py`
 - CREATE `backend/app/models.py`
 - ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `CurrencyTotals`, `PortfolioResponse`, `TradeRequest`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
 - CREATE `backend/tests/test_models.py`
+- CREATE `backend/tests/test_app.py`
 
-**Evidenced by:** `cd backend && uv run python -V && uv run pytest tests/test_models.py -v` —
-the version line must read 3.12, and the tests assert each model rejects a payload with a
-required field removed. Run before replying, output pasted.
+**Evidenced by:** `cd backend && uv run python -V && uv run pytest tests/ -v` — the version
+line must read 3.12; `test_app.py` issues an `OPTIONS` preflight through `TestClient` and
+asserts the allow-origin header is present; `test_models.py` asserts each of the fifteen
+models rejects a payload with a required field removed. Run before replying, output pasted.
 
 ## T2 — Instrument universe
 
 **Objective:** Define the instrument universe as JSON and load it at startup, so that
 scenarios have something to act on and betas can be tuned without touching code.
 **Outcome:** The loader returns between 30 and 45 instruments spanning at least 6 sectors;
-every instrument carries a currency and a beta for each of the five factors, every beta is
-one of {-1.0, -0.5, 0.0, 0.5, 1.0}, and exactly five instruments are marked as macro drivers
-with exposure 1.0 to their own factor and 0.0 to the other four. → serves **O12**
+every instrument carries a currency, a decimal-places value and a beta for each of the five
+factors; every beta is one of {-1.0, -0.5, 0.0, 0.5, 1.0}; and exactly five instruments are
+marked as macro drivers with exposure 1.0 to their own factor and 0.0 to the other four.
+→ serves **O12**
 **Reads:** `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/data/instruments.json`
@@ -227,8 +280,9 @@ with exposure 1.0 to their own factor and 0.0 to the other four. → serves **O1
 - CREATE `backend/tests/test_instruments.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_instruments.py -v` — asserts the
-count bounds, the sector count, the beta value set, and the five macro drivers' exposure
-rows. Run before replying, output pasted.
+count bounds, the sector count, that every instrument has a currency and a decimal-places
+value, the beta value set, and the five macro drivers' exposure rows. Run before replying,
+output pasted.
 
 ## T3 — Scenario library
 
@@ -256,46 +310,52 @@ and the JSON ids are the same set. Run before replying, output pasted.
 **Objective:** Implement the tick engine — per-factor returns, per-instrument log returns,
 multiplicative price update, stored per-factor contributions and a bounded ring buffer — so
 that price history exists and every move is attributable.
-**Outcome:** Ticking advances every instrument's price by `exp(Σ beta·f + σ·vol_mult·ε)`;
-prices stay strictly positive over 5000 ticks under every scenario; the buffer holds at most
-5000 bars per instrument and discards oldest-first; the sum of a bar's stored factor
-contributions plus its residual equals its log return to within 1e-9; two engines built with
-the same seed produce identical bar sequences. → serves **O1**, **O2**, **O3**, **O4**, **O5**
+**Outcome:** Ticking advances every instrument's price by `exp(Σ beta·f + σ·vol_mult·ε)` and
+appends a `Bar` carrying the fields the Definitions name; prices stay strictly positive over
+5000 ticks under every scenario; the buffer holds at most 5000 bars per instrument and
+discards oldest-first; a bar's stored contributions plus its residual equal its log return to
+within 1e-9; two engines built with the same seed produce identical bar sequences.
+→ serves **O1**, **O2**, **O3**, **O4**, **O5**
 **Reads:** `backend/app/instruments.py`, `backend/app/scenarios.py`
 **Deliverables:**
 - CREATE `backend/app/sim.py`
-- ADD type `Bar` in `backend/app/sim.py`
+- ADD type `Bar` in `backend/app/sim.py` — fields exactly as the Definitions section states
 - ADD class `RingBuffer` in `backend/app/sim.py`
 - ADD class `Engine` in `backend/app/sim.py`
 - ADD function `tick(self) -> None` in `backend/app/sim.py`
+- ADD function `day_change_pct(self, symbol: str) -> float` in `backend/app/sim.py`
+- ADD function `session_volume(self, symbol: str) -> float` in `backend/app/sim.py`
 - CREATE `backend/tests/test_sim.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-clause: positivity over 5000 ticks per scenario, buffer cap and eviction order at the 5000
-and 5001 boundary, contribution reconciliation to 1e-9, and identity of two same-seed runs.
-Run before replying, output pasted.
+clause: positivity over 5000 ticks per scenario, buffer cap and eviction order asserted at
+both the 5000 and the 5001 boundary, contribution reconciliation to 1e-9, identity of two
+same-seed runs, and `day_change_pct` computed against a bar constructed at a known session
+boundary. Run before replying, output pasted.
 
 ## T5 — In-process state, fixed-seed backfill and the tick loop
 
 **Objective:** Hold the engine, the portfolio, the cash balance and the active scenario in
 process; backfill history at startup from a fixed seed; and advance the engine once per
 second for the life of the process.
-**Outcome:** Startup leaves at least 780 bars per instrument and a fixed non-empty portfolio
-identical across two starts; the active scenario is baseline; and the loop advances the
-engine without any request being made. → serves **O1**, **O2**
+**Outcome:** `build_state()` leaves 780 bars per instrument and a fixed non-empty portfolio
+identical across two calls; the active scenario is baseline; and one call to `advance_once`
+appends exactly one bar to every instrument — this being the same function the background
+loop calls, so the loop's behaviour is the function's. → serves **O1**, **O2**
 **Reads:** `backend/app/sim.py`, `backend/app/main.py`
 **Deliverables:**
 - CREATE `backend/app/state.py`
-- ADD var `SEED`, `BACKFILL_TICKS`, `STARTING_POSITIONS`, `STARTING_CASH` in `backend/app/state.py`
+- ADD var `SEED`, `BACKFILL_TICKS`, `SESSION_TICKS`, `STARTING_POSITIONS`, `STARTING_CASH` in `backend/app/state.py`
 - ADD class `AppState` in `backend/app/state.py`
 - ADD function `build_state() -> AppState` in `backend/app/state.py`
-- UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`
+- ADD function `advance_once(state: AppState) -> None` in `backend/app/state.py`
+- UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`, whose background task calls `advance_once` once per second and calls nothing else
 - CREATE `backend/tests/test_state.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
-depth, that two `build_state()` calls compare equal bar for bar and position for position,
-that the active scenario is baseline, and that advancing the loop's coroutine once increases
-every instrument's bar count by one. Run before replying, output pasted.
+depth is 780, that two `build_state()` calls compare equal bar for bar and position for
+position, that the active scenario is baseline, and that one `advance_once` call raises every
+instrument's bar count by exactly one. Run before replying, output pasted.
 
 ## T6 — Market endpoints
 
@@ -303,9 +363,9 @@ every instrument's bar count by one. Run before replying, output pasted.
 so the frontend has prices to display.
 **Outcome:** `GET /symbols?q=` fuzzy-matches symbol and name and returns no non-matching
 instrument; `GET /quotes?symbols=` returns one quote per requested symbol in request order
-with last price, day change % and a sparkline; `GET /candles/{symbol}?tf=` aggregates the
-buffer into 1m, 5m, 15m and session bars, and an unknown `tf` is rejected rather than
-silently defaulted. → serves **O7**
+carrying last price, `day change %` as the Definitions define it, and a sparkline;
+`GET /candles/{symbol}?tf=` aggregates the buffer into 1m, 5m, 15m and session bars, and an
+unknown `tf` is rejected rather than silently defaulted. → serves **O7**
 **Reads:** `backend/app/state.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/market.py`
@@ -314,9 +374,10 @@ silently defaulted. → serves **O7**
 - CREATE `backend/tests/test_market.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
-match excludes a known non-match, that quote order follows request order, that each timeframe
-returns a bar count consistent with its aggregation factor, and that an unknown `tf` returns
-422. Run before replying, output pasted.
+match excludes a known non-match, that quote order follows request order, that the returned
+day change equals `Engine.day_change_pct` for the same symbol, that each timeframe returns a
+bar count consistent with its aggregation factor, and that an unknown `tf` returns 422. Run
+before replying, output pasted.
 
 ## T7 — Portfolio and the amount-denominated trade
 
@@ -345,10 +406,10 @@ replying, output pasted.
 
 **Objective:** Rank the quote set into gainers, losers and most active, and expose the five
 macro drivers as their own endpoint.
-**Outcome:** `GET /movers` returns gainers sorted descending by day change %, losers
-ascending, and most active descending by session volume, with no instrument in both gainers
-and losers. `GET /macro` returns exactly the five macro-driver instruments in factor order.
-→ serves **O11**, **O12**
+**Outcome:** `GET /movers` returns gainers sorted descending by `day change %`, losers
+ascending, and most active descending by session volume — both as the Definitions define them
+— with no instrument in both gainers and losers. `GET /macro` returns exactly the five
+macro-driver instruments in factor order. → serves **O11**, **O12**
 **Reads:** `backend/app/state.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/movers.py`
@@ -357,9 +418,10 @@ and losers. `GET /macro` returns exactly the five macro-driver instruments in fa
 - CREATE `backend/tests/test_movers.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_movers.py -v` — asserts each list's
-sort direction pairwise, asserts the gainers and losers sets are disjoint, asserts `/macro`
-returns exactly five in factor order, and asserts that activating a scenario and ticking
-changes the membership of at least one list. Run before replying, output pasted.
+sort direction pairwise, asserts the gainers and losers sets are disjoint, asserts most active
+ranks on `Engine.session_volume`, asserts `/macro` returns exactly five in factor order, and
+asserts that activating a scenario and ticking changes the membership of at least one list.
+Run before replying, output pasted.
 
 ## T9 — Scenario endpoints
 
@@ -392,7 +454,7 @@ lookup. → serves **O5**, **O8**
 **Reads:** `backend/app/state.py`, `backend/app/sim.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/impact.py`
-- ADD function `get_portfolio_impact`, `get_symbol_impact` in `backend/app/routers/impact.py`
+- ADD function `get_portfolio_impact`, `get_symbol_impact` in `backend/app/routers/impact.py` — `get_portfolio_impact` declared first
 - ADD var `FACTOR_SENTENCES` in `backend/app/routers/impact.py`
 - UPDATE `backend/app/main.py`
 - CREATE `backend/tests/test_impact.py`
@@ -404,54 +466,62 @@ Run before replying, output pasted.
 
 ## T11 — OpenAPI hardening and schema emission
 
-**Objective:** Give every route an explicit operation id and a tag, and emit the schema to a
-file by importing the app, so the client generator needs no running server.
-**Outcome:** `backend/openapi.json` exists on disk; every operation in it has an explicit
-`operationId` and at least one tag; no operation id matches the FastAPI default form
-`<name>_<path>_<method>`. → serves **O7**, **O13**
+**Objective:** Give every route an explicit operation id and a tag, pin the schema version the
+generator accepts, and emit the schema to a file by importing the app, so the client generator
+needs no running server.
+**Outcome:** `backend/openapi.json` exists on disk and declares `"openapi": "3.0.2"`; all 13
+operations carry an explicit `operationId` and at least one tag; no operation id matches the
+FastAPI default form `<name>_<path>_<method>`. → serves **O7**, **O13**
 **Reads:** every router created by T6–T10, `backend/app/main.py`
 **Deliverables:**
-- UPDATE `backend/app/main.py`
+- UPDATE `backend/app/main.py` — set `app.openapi_version = "3.0.2"`
 - ADD function `generate_unique_id(route) -> str` in `backend/app/main.py`
 - CREATE `backend/scripts/emit_openapi.py`
 - CREATE `backend/openapi.json`
 - CREATE `backend/tests/test_openapi.py`
 
 **Evidenced by:** `cd backend && uv run python scripts/emit_openapi.py && uv run pytest
-tests/test_openapi.py -v` — asserts all 13 operations carry an explicit id and a tag, and
-asserts none matches the default-name pattern. Run before replying, output pasted.
+tests/test_openapi.py -v` — asserts the emitted file's `openapi` field is exactly `3.0.2`,
+asserts all 13 operations carry an explicit id and a tag, and asserts none matches the
+default-name pattern. Run before replying, output pasted.
 
 ## T12 — Angular workspace and the generated client
 
-**Objective:** Create the Angular workspace and generate the typed API client from the
-emitted schema, committing the output.
+**Objective:** Create the complete Angular workspace — scaffold included — and generate the
+typed API client from the emitted schema, committing the output.
 **Outcome:** `npm run gen:api` regenerates the client from `backend/openapi.json`; the
-generated services cover all 13 operations; `ng build` succeeds with no backend process
-running. → serves **O13**
+generated services cover all 13 operations; `npx ng build` succeeds with no backend process
+running and no file created by a later task present. → serves **O13**
 **Reads:** `backend/openapi.json`
 **Deliverables:**
-- CREATE `frontend/package.json`
+- CREATE `frontend/package.json` with a `gen:api` script and no UI or styling dependency
 - CREATE `frontend/angular.json`
+- CREATE `frontend/tsconfig.json`
+- CREATE `frontend/tsconfig.app.json`
+- CREATE `frontend/src/index.html`
+- CREATE `frontend/src/main.ts` — bootstraps the root standalone component
+- CREATE `frontend/src/app/app.config.ts` — provides `HttpClient` and the API base URL
 - CREATE `frontend/ng-openapi-gen.json`
 - CREATE `frontend/src/app/api/`
-- CREATE `frontend/src/app/app.config.ts`
 
-**Evidenced by:** `cd frontend && npm run gen:api && npx ng build` — run with no backend
-process running, output pasted. Then report the count of generated service methods and
-confirm it is 13.
+**Evidenced by:** `cd frontend && npm install && npm run gen:api && npx ng build` — run with
+no backend process running, output pasted. Then `grep -rc 'Observable<' src/app/api/services`
+and report the operation count, confirming it is 13.
+**Deferred to human review:** none — this task's outcome is fully established by the build.
 
-## T13 — Design system and application shell
+## T13 — Design system, shell and dashboard composition
 
-**Objective:** Establish the token file and the shared formatters that every later component
-is built from, and render the dark-theme shell, the toolbar and the required simulated-feed
-label. This task sets the visual bar for the whole frontend; the eleven that follow inherit
-it rather than restating it.
-**Outcome:** `tokens.css` declares the full neutral ramp, the two signal colours, the spacing
+**Objective:** Establish the token file, the shared formatters, the shell and the dashboard
+composition, and stub every feature slot as a skeleton, so that the app renders end to end
+from this task onward and the eleven that follow each fill one file nobody else writes.
+**Outcome:** `tokens.css` declares the neutral ramp, the two signal colours, the spacing
 scale, the type scale, the radii and the motion durations as custom properties, with body
 text meeting 4.5:1 against its background; `format.ts` exports the price, quantity and signed
 percentage formatters, the last emitting U+2212 for negatives; the shell renders a toolbar
-containing the exact string `Simulated feed`; `package.json` declares no UI or styling
-package. → serves **O16**, **O23**
+containing the exact string `Simulated feed`; the dashboard composes all ten feature slots
+with the portfolio summary first; every slot renders a skeleton at its final dimensions; and
+no component source declares a hex colour, a `px` value or a millisecond duration.
+→ serves **O16**, **O17**, **O23**
 **Reads:** `frontend/src/app/app.config.ts`
 **Deliverables:**
 - CREATE `frontend/src/styles/tokens.css`
@@ -459,13 +529,18 @@ package. → serves **O16**, **O23**
 - CREATE `frontend/src/app/core/format.ts`
 - ADD function `formatPrice(value: number, dp: number) -> string`, `formatQuantity(value: number) -> string`, `formatSignedPercent(value: number) -> string` in `frontend/src/app/core/format.ts`
 - CREATE `frontend/src/app/shell/shell.component.ts`
-- UPDATE `frontend/src/app/app.config.ts`
+- CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the ten slots in final order, portfolio summary first
+- FOR EACH slot in `portfolio-summary`, `macro-strip`, `watchlist`, `symbol-search`, `movers`, `scenario-selector`, `headline-ticker`, `detail`, `trade-ticket`, `impact-panel` — CREATE its component file as a skeleton placeholder at final dimensions
+- UPDATE `frontend/src/main.ts`
 
-**Evidenced by:** `cd frontend && npx ng build`, plus `grep -nE '#[0-9a-fA-F]{3,8}|[0-9]+px'
-frontend/src/app/**/*.css` returning no match outside `tokens.css`, plus an observation:
-state that `Simulated feed` appears in the rendered toolbar, paste the token file's colour
-block with the computed contrast ratio for body text, and paste the `dependencies` block of
-`frontend/package.json`. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
+`grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+px|[0-9]+ms' src/app --include='*.ts'` — must return no
+match, and the command is run from `frontend/` so the path resolves. Then paste `tokens.css`
+in full with the computed contrast ratio for body text on the page background, and paste the
+`dependencies` block of `package.json`.
+**Deferred to human review:** (1) the toolbar shows `Simulated feed`; (2) all ten slots render
+as skeletons with no blank areas; (3) the portfolio summary is the topmost slot. Recorded
+`UNVERIFIED`; held for human review before commit.
 
 ## T14 — The shared quote poll
 
@@ -480,41 +555,48 @@ per interval; `refreshNow()` issues a request without waiting out the interval. 
 - ADD class `QuoteService` in `frontend/src/app/core/quote.service.ts`
 - ADD function `quotes$(symbols: string[])`, `refreshNow()` in `frontend/src/app/core/quote.service.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: with two components
-subscribed, report the number of `/quotes` entries in the browser network panel over one
-interval. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste `quote.service.ts`
+in full and name the operator that makes the stream shared — a multicasting operator must be
+present, and a per-subscriber `interval` without one is the defect this evidence exists to
+expose.
+**Deferred to human review:** with the watchlist and the detail view both open, the network
+panel shows one `/quotes` request per interval, not two; and selecting a scenario produces a
+`/quotes` request sooner than the interval. Recorded `UNVERIFIED`; held for human review
+before commit.
 
 ## T15 — Portfolio summary
 
-**Objective:** Render total value, total return in currency and %, and today's change, as one
-set per currency, above everything else on the dashboard.
-**Outcome:** The summary is the first element in the dashboard's DOM order; it shows one
-block per currency held; no displayed figure sums across currencies. → serves **O10**, **O17**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/shell/shell.component.ts`
+**Objective:** Fill the portfolio summary slot with total value, total return in currency and
+%, and today's change, as one set per currency.
+**Outcome:** The summary shows one block per currency held, using `day change %` as the
+Definitions define it; no displayed figure sums across currencies. → serves **O10**, **O17**
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/portfolio/portfolio-summary.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/portfolio/portfolio-summary.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the dashboard's
-first child element and the per-currency blocks rendered. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component's
+template and confirm no expression sums across currency groups.
+**Deferred to human review:** one block renders per currency held, and the summary sits above
+every other element. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T16 — Macro drivers strip
 
-**Objective:** Pin the five macro drivers along the top of the dashboard so the factor set is
+**Objective:** Fill the macro strip slot with the five macro drivers, so the factor set is
 visible as moving prices.
-**Outcome:** Five tiles render, one per factor, in factor order, updating on the shared poll.
-→ serves **O12**, **O14**
-**Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`
+**Outcome:** Five tiles render, one per factor, in factor order, subscribed to the shared
+poll rather than polling independently. → serves **O12**, **O14**
+**Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/macro/macro-strip.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/macro/macro-strip.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the five tile
-labels in render order. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
+confirm it injects `QuoteService` and creates no `interval` of its own.
+**Deferred to human review:** five tiles render in factor order and update together.
+Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T17 — Watchlist
 
-**Objective:** Render the watchlist rows — symbol, last price, day change %, sparkline — off
+**Objective:** Fill the watchlist slot — symbol, last price, day change %, sparkline — off
 the shared poll, flashing green or red on change.
 **Outcome:** Each row shows the four fields at a fixed row height, with price and change in
 fixed-width decimal-aligned columns that do not move as values change width; a row whose
@@ -524,118 +606,134 @@ each poll without changing its box. → serves **O14**, **O22**
 **Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`,
 `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/watchlist/watchlist.component.ts`
+- UPDATE `frontend/src/app/features/watchlist/watchlist.component.ts`
 - CREATE `frontend/src/app/features/watchlist/sparkline.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report a row's four
-fields and the flash colour observed on a rising and a falling tick. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the row styles,
+showing the fixed row height, the fixed numeric column widths, `font-variant-numeric:
+tabular-nums`, and the `prefers-reduced-motion` block — all as token references.
+**Deferred to human review:** a rising row flashes green and a falling row red; no column
+boundary moves as prices cross a digit-width change. Recorded `UNVERIFIED`; held for human
+review before commit.
 
 ## T18 — Symbol search
 
-**Objective:** Add the search box that fuzzy-matches the instrument list and adds a result to
-the watchlist.
+**Objective:** Fill the search slot with a box that fuzzy-matches the instrument list and adds
+a result to the watchlist.
 **Outcome:** Typing a partial symbol or name lists matching instruments and no non-matching
 one; selecting a result adds it to the watchlist. → serves **O14**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/watchlist/watchlist.component.ts`
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/watchlist/watchlist.component.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/search/symbol-search.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/search/symbol-search.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the results for a
-two-character query and confirm a known non-match is absent. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
+confirm results come from `GET /symbols` rather than from client-side filtering of a quote
+set.
+**Deferred to human review:** a two-character query lists matches and omits a known
+non-match; selecting one adds it to the watchlist. Recorded `UNVERIFIED`; held for human
+review before commit.
 
 ## T19 — Instrument detail chart
 
-**Objective:** Render the line/candle chart with the timeframe toggle and the scenario
-activation marker.
+**Objective:** Fill the detail slot with the line/candle chart, the timeframe toggle and the
+scenario activation marker.
 **Outcome:** Selecting an instrument renders its series; the toggle switches between 1m, 5m,
 15m and session and the bar count changes accordingly; while a scenario is active a labelled
 vertical marker is drawn at `activated_at`, and at baseline none is. → serves **O19**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/detail/detail.component.ts`
+- UPDATE `frontend/src/app/features/detail/detail.component.ts`
 - CREATE `frontend/src/app/features/detail/chart.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the bar count at
-each of the four timeframes, and confirm the marker's presence with a scenario active and its
-absence at baseline. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the marker's
+render condition, showing it is driven by `activated_at` being non-null rather than by a
+scenario simply being selected.
+**Deferred to human review:** the four timeframes return visibly different bar counts; the
+marker appears with a scenario active and is absent at baseline. Recorded `UNVERIFIED`; held
+for human review before commit.
 
 ## T20 — Trade ticket
 
-**Objective:** Build the ticket that takes an amount in the instrument's native currency and
-shows the derived quantity before submission.
+**Objective:** Fill the trade ticket slot with a form taking an amount in the instrument's
+native currency, showing the derived quantity before submission.
 **Outcome:** The amount field is labelled with the selected instrument's currency; the
-derived quantity shown equals `amount ÷ price` and is fractional; submitting posts the amount
-and the portfolio summary updates. → serves **O9**, **O10**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/portfolio/portfolio-summary.component.ts`
+derived quantity shown equals `amount ÷ price` and is fractional; submitting posts the amount,
+not a quantity. → serves **O9**, **O10**
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/portfolio/trade-ticket.component.ts`
-- UPDATE `frontend/src/app/features/detail/detail.component.ts`
+- UPDATE `frontend/src/app/features/portfolio/trade-ticket.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the currency
-label, the amount entered, the derived quantity shown, and the summary before and after
-submission. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the submit handler,
+confirming the request body carries an amount and no quantity field, and paste the currency
+label binding.
+**Deferred to human review:** entering an amount shows a fractional quantity, and submitting
+updates the portfolio summary. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T21 — Top movers
 
-**Objective:** Render gainers, losers and most active as three lists that repopulate under a
-scenario.
-**Outcome:** Three lists render with the ordering the API returns; activating a scenario
-visibly changes the membership of at least one. → serves **O11**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`
+**Objective:** Fill the movers slot with gainers, losers and most active as three lists that
+repopulate under a scenario.
+**Outcome:** Three lists render in the order the API returns, with no client-side re-sorting.
+→ serves **O11**
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/movers/movers.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/movers/movers.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report each list's
-membership at baseline and after activating the oil supply shock. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
+confirm no sort or `orderBy` is applied to the three lists client-side — the API's ordering is
+the contract, and re-sorting here would silently mask a backend defect.
+**Deferred to human review:** activating the oil supply shock visibly changes the membership
+of at least one list. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T22 — Scenario selector
 
-**Objective:** Add the always-visible dropdown, the active-scenario chip and the forced
-refresh on selection.
+**Objective:** Fill the scenario selector slot with the always-visible dropdown, the
+active-scenario chip and the forced refresh on selection.
 **Outcome:** The dropdown lists the library with "Reset to normal" first; selecting an item
-POSTs and calls `refreshNow()` rather than waiting out the interval; the active scenario
-shows as a chip in the toolbar. → serves **O15**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`, `frontend/src/app/shell/shell.component.ts`
+POSTs and then calls `refreshNow()` rather than waiting out the interval; the active scenario
+shows as a chip. → serves **O15**
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/quote.service.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
 - CREATE `frontend/src/app/core/scenario.service.ts`
-- CREATE `frontend/src/app/features/scenario/scenario-selector.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/scenario/scenario-selector.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the dropdown's
-first item, and the elapsed time between selecting a scenario and the watchlist updating.
-Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the selection
+handler, showing `refreshNow()` is called in the POST's success path and not merely alongside
+it, and paste the literal string `Reset to normal` as the first option.
+**Deferred to human review:** the watchlist visibly updates on selection without waiting out
+the poll interval. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T23 — Headlines ticker
 
-**Objective:** Render the active scenario's canned headlines in a ticker strip, so the
+**Objective:** Fill the ticker slot with the active scenario's canned headlines, so the
 causality reads to a non-technical audience.
-**Outcome:** The strip shows the active scenario's headlines and swaps to the new set within
-one refresh of a scenario change. → serves **O21**
-**Reads:** `frontend/src/app/core/scenario.service.ts`, `frontend/src/app/api/`
+**Outcome:** The strip shows the active scenario's headlines, and the baseline's while at
+baseline. → serves **O21**
+**Reads:** `frontend/src/app/core/scenario.service.ts`, `frontend/src/app/api/`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/ticker/headline-ticker.component.ts`
-- UPDATE `frontend/src/app/shell/shell.component.ts`
+- UPDATE `frontend/src/app/features/ticker/headline-ticker.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the headlines
-shown at baseline and after activating a scenario. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
+confirm the headlines come from `GET /scenario` rather than from a copy held in the frontend.
+**Deferred to human review:** the strip swaps to the new headlines within one refresh of a
+scenario change. Recorded `UNVERIFIED`; held for human review before commit.
 
 ## T24 — Impact panel
 
-**Objective:** Render the scenario impact panel for a selected instrument — plain language
-first, full attribution behind a disclosure — and the peer comparison.
+**Objective:** Fill the impact slot — plain language first, full attribution behind a
+disclosure — and add the peer comparison.
 **Outcome:** The default view shows the headline move, at most three bars and one
 plain-language sentence per factor, and contains no exposure value such as `oil beta -0.9`;
 expanding the detail reveals the full per-factor attribution including exposures; the peer
 list ranks same-sector instruments by impact. → serves **O18**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/detail/detail.component.ts`
+**Reads:** `frontend/src/app/api/`, `frontend/src/app/features/detail/detail.component.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/features/impact/impact-panel.component.ts`
+- UPDATE `frontend/src/app/features/impact/impact-panel.component.ts`
 - CREATE `frontend/src/app/features/impact/peer-comparison.component.ts`
-- UPDATE `frontend/src/app/features/detail/detail.component.ts`
 
-**Evidenced by:** `cd frontend && npx ng build` plus an observation: report the default
-view's bar count and its full text, confirming no exposure value appears, then report the
-expanded view's contents. Recorded `UNVERIFIED`; held for human review before commit.
+**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the default view's
+template and confirm it binds no beta or exposure field, and that the bar list is capped at
+three in the template rather than by the data happening to be short.
+**Deferred to human review:** the collapsed panel reads as plain language with no exposure
+values; expanding reveals the full attribution; peers are same-sector and ranked by impact.
+Recorded `UNVERIFIED`; held for human review before commit.
