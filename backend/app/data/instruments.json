@@ -1,0 +1,461 @@
+{
+  "instruments": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 227.5,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft Corporation",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 418.3,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 121.4,
+      "betas": {"market": 1.0, "rates": -1.0, "oil": 0.0, "usd": -0.5, "credit": 1.0}
+    },
+    {
+      "symbol": "ORCL",
+      "name": "Oracle Corporation",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 168.2,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "CSCO",
+      "name": "Cisco Systems, Inc.",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 52.8,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.0}
+    },
+    {
+      "symbol": "ADBE",
+      "name": "Adobe Inc.",
+      "sector": "Technology",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 512.6,
+      "betas": {"market": 1.0, "rates": -1.0, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase & Co.",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 218.9,
+      "betas": {"market": 1.0, "rates": 1.0, "oil": 0.0, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "BAC",
+      "name": "Bank of America Corporation",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 40.15,
+      "betas": {"market": 1.0, "rates": 1.0, "oil": 0.0, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "GS",
+      "name": "The Goldman Sachs Group, Inc.",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 505.7,
+      "betas": {"market": 1.0, "rates": 0.5, "oil": 0.0, "usd": 0.0, "credit": 1.0}
+    },
+    {
+      "symbol": "WFC",
+      "name": "Wells Fargo & Company",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 57.3,
+      "betas": {"market": 0.5, "rates": 1.0, "oil": 0.0, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "MS",
+      "name": "Morgan Stanley",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 104.6,
+      "betas": {"market": 1.0, "rates": 0.5, "oil": 0.0, "usd": 0.0, "credit": 1.0}
+    },
+    {
+      "symbol": "SCHW",
+      "name": "The Charles Schwab Corporation",
+      "sector": "Financials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 64.25,
+      "betas": {"market": 1.0, "rates": 1.0, "oil": 0.0, "usd": 0.0, "credit": 0.5}
+    },
+
+    {
+      "symbol": "XOM",
+      "name": "Exxon Mobil Corporation",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 117.4,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": 1.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "CVX",
+      "name": "Chevron Corporation",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 146.8,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": 1.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "COP",
+      "name": "ConocoPhillips",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 108.2,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": 1.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "HAL",
+      "name": "Halliburton Company",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 31.6,
+      "betas": {"market": 1.0, "rates": 0.0, "oil": 1.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "OXY",
+      "name": "Occidental Petroleum Corporation",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 51.9,
+      "betas": {"market": 1.0, "rates": 0.0, "oil": 1.0, "usd": -0.5, "credit": 1.0}
+    },
+    {
+      "symbol": "VLO",
+      "name": "Valero Energy Corporation",
+      "sector": "Energy",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 137.5,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": -0.5, "usd": -0.5, "credit": 0.5}
+    },
+
+    {
+      "symbol": "JNJ",
+      "name": "Johnson & Johnson",
+      "sector": "Health Care",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 162.3,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.0}
+    },
+    {
+      "symbol": "PFE",
+      "name": "Pfizer Inc.",
+      "sector": "Health Care",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 29.4,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.0}
+    },
+    {
+      "symbol": "UNH",
+      "name": "UnitedHealth Group Incorporated",
+      "sector": "Health Care",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 582.1,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "MRK",
+      "name": "Merck & Co., Inc.",
+      "sector": "Health Care",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 113.7,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.0}
+    },
+    {
+      "symbol": "ABBV",
+      "name": "AbbVie Inc.",
+      "sector": "Health Care",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 196.4,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+
+    {
+      "symbol": "AMZN",
+      "name": "Amazon.com, Inc.",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 184.7,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": -0.5, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "TSLA",
+      "name": "Tesla, Inc.",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 243.8,
+      "betas": {"market": 1.0, "rates": -1.0, "oil": 0.5, "usd": -0.5, "credit": 1.0}
+    },
+    {
+      "symbol": "HD",
+      "name": "The Home Depot, Inc.",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 382.5,
+      "betas": {"market": 0.5, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "MCD",
+      "name": "McDonald's Corporation",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 297.6,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": 0.0, "usd": -0.5, "credit": 0.0}
+    },
+    {
+      "symbol": "NKE",
+      "name": "NIKE, Inc.",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 82.1,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": -0.5, "usd": -1.0, "credit": 0.5}
+    },
+    {
+      "symbol": "CCL",
+      "name": "Carnival Corporation",
+      "sector": "Consumer Discretionary",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 18.35,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": -1.0, "usd": -0.5, "credit": 1.0}
+    },
+
+    {
+      "symbol": "CAT",
+      "name": "Caterpillar Inc.",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 361.2,
+      "betas": {"market": 1.0, "rates": 0.0, "oil": 0.5, "usd": -1.0, "credit": 0.5}
+    },
+    {
+      "symbol": "HON",
+      "name": "Honeywell International Inc.",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 209.4,
+      "betas": {"market": 0.5, "rates": 0.0, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+    {
+      "symbol": "UNP",
+      "name": "Union Pacific Corporation",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 243.1,
+      "betas": {"market": 0.5, "rates": -0.5, "oil": -0.5, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "DAL",
+      "name": "Delta Air Lines, Inc.",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 46.7,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": -1.0, "usd": -0.5, "credit": 1.0}
+    },
+    {
+      "symbol": "LUV",
+      "name": "Southwest Airlines Co.",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 29.8,
+      "betas": {"market": 1.0, "rates": -0.5, "oil": -1.0, "usd": 0.0, "credit": 0.5}
+    },
+    {
+      "symbol": "GE",
+      "name": "GE Aerospace",
+      "sector": "Industrials",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 184.3,
+      "betas": {"market": 1.0, "rates": 0.0, "oil": 0.0, "usd": -0.5, "credit": 0.5}
+    },
+
+    {
+      "symbol": "NEE",
+      "name": "NextEra Energy, Inc.",
+      "sector": "Utilities",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 79.6,
+      "betas": {"market": 0.5, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "DUK",
+      "name": "Duke Energy Corporation",
+      "sector": "Utilities",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 116.2,
+      "betas": {"market": 0.0, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": -0.5}
+    },
+    {
+      "symbol": "SO",
+      "name": "The Southern Company",
+      "sector": "Utilities",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 89.4,
+      "betas": {"market": 0.0, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "AEP",
+      "name": "American Electric Power Company, Inc.",
+      "sector": "Utilities",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 101.3,
+      "betas": {"market": 0.5, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": -0.5}
+    },
+    {
+      "symbol": "XEL",
+      "name": "Xcel Energy Inc.",
+      "sector": "Utilities",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": null,
+      "start_price": 63.7,
+      "betas": {"market": 0.0, "rates": -1.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+
+    {
+      "symbol": "SPX",
+      "name": "S&P 500 Index",
+      "sector": "Macro",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": "market",
+      "start_price": 5620.5,
+      "betas": {"market": 1.0, "rates": 0.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "US10Y",
+      "name": "US 10-Year Treasury Yield",
+      "sector": "Macro",
+      "currency": "USD",
+      "decimals": 3,
+      "factor": "rates",
+      "start_price": 4.125,
+      "betas": {"market": 0.0, "rates": 1.0, "oil": 0.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "WTI",
+      "name": "WTI Crude Oil",
+      "sector": "Macro",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": "oil",
+      "start_price": 72.4,
+      "betas": {"market": 0.0, "rates": 0.0, "oil": 1.0, "usd": 0.0, "credit": 0.0}
+    },
+    {
+      "symbol": "DXY",
+      "name": "US Dollar Index",
+      "sector": "Macro",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": "usd",
+      "start_price": 101.65,
+      "betas": {"market": 0.0, "rates": 0.0, "oil": 0.0, "usd": 1.0, "credit": 0.0}
+    },
+    {
+      "symbol": "CDXHY",
+      "name": "CDX High Yield Credit Index",
+      "sector": "Macro",
+      "currency": "USD",
+      "decimals": 2,
+      "factor": "credit",
+      "start_price": 3.45,
+      "betas": {"market": 0.0, "rates": 0.0, "oil": 0.0, "usd": 0.0, "credit": 1.0}
+    }
+  ]
+}
