@@ -71,96 +71,90 @@ non-technical audience in a single view.
 
 # Constraints
 
-**This spec is the source of truth. `app-features.md` is the input it was read from, and it
-is not maintained.** Where the two disagree, this document wins and the brief is stale — it
-has no marker saying so, so anyone sent back to it should be told. The known divergence is
-the markets table, marked below.
+Bounds on how the system is built. Every line is binding on every task.
 
-Lines here are quoted from `app-features.md` unless marked. Decisions taken at intake are
-marked **[decided]**; requirements added after intake, which the brief therefore does not
-contain, are marked **[added after intake]**. Both carry no quotation, and the marker is the
-point: a plausible addition written in the same typeface as a quoted one is indistinguishable
-from it, and nobody will ever think to ask.
+**Stack**
 
-- "**Backend:** FastAPI (Python), Pydantic response models, no database" — `app-features.md:9`
-- "**Frontend:** Angular (standalone components, RxJS, `HttpClient`)" — `app-features.md:10`
-- "**Styling:** hand-rolled CSS, dark theme, no UI or styling packages" — `app-features.md:11`
-- "**Transport:** HTTP polling (no WebSockets)" — `app-features.md:12`
-- "Frontend and API are cross-origin in dev — either `CORSMiddleware` or an Angular dev proxy
-  is required for requests to reach the API at all." — `app-features.md:23`
-- "Roughly 25–40 equities across 6–8 sectors" plus "the five macro drivers" —
-  `app-features.md:53`
-- Betas are drawn from "{−1, −0.5, 0, +0.5, +1}" — `app-features.md:225`
-- Factors are exactly: "market, rates/duration, oil, USD, credit spread" — `app-features.md:169`
-- "one tick per second of wall time, representing one minute of market time" —
-  `app-features.md:151`
-- "At startup the loop runs roughly 780 ticks at full speed" — `app-features.md:203`
-- "The buffer caps at ~5000 bars per instrument and discards the oldest" — `app-features.md:204`
-- Client polls `/quotes` "on an RxJS interval (~2–3s) via a shared `QuoteService`" —
-  `app-features.md:129`
-- Chart timeframes are "1m, 5m, 15m, session" — `app-features.md:208`
-- "Six or seven" scenarios — `app-features.md:293`
-- Position size "is a float rather than an integer" — `app-features.md:50`
-- "a 'Simulated feed' label in the header is required, not optional" — `app-features.md:299`
-- "Exposure values such as 'oil beta −0.9' ... do not belong on the headline view" —
-  `app-features.md:271`
-- Generator is `ng-openapi-gen`, and the output is committed "so the frontend builds without
-  the backend running" — `app-features.md:112`
-- "FastAPI emits OpenAPI 3.1 by default, and some generators still expect 3.0. If the
-  generator objects, pin `app.openapi_version = "3.0.2"`" — `app-features.md:123`. This spec
-  pins it unconditionally rather than waiting for the generator to object, because the task
-  that would discover the objection is not the task that can fix it.
-- Off-limits: "WebSockets, offline support, Redis, multi-service deployment, options/greeks,
-  customisable multi-pane layouts, order matching against a simulated book" — `app-features.md:320`
-- Off-limits: "User-authored scenarios, timed multi-stage event sequences, estimating betas
-  from historical data" — `app-features.md:303`
-- No persistence layer, and "Do not abstract for it in advance" — `app-features.md:81`
-- **[decided]** Instruments carry a native currency. No FX rate exists anywhere. Portfolio
-  value, return and today's change are reported as one set per currency and never summed
-  across currencies. The trade amount is in the instrument's native currency.
-- **[decided]** The optional feature is the headlines ticker. Price alerts are out of scope.
-- **[added after intake]** **The markets table is a requirement, not an extra.** The brief
-  describes only a curated watchlist (`app-features.md:28`) and contains no full-universe
-  view; O24, O25 and T26 were added here and are the reason this spec and the brief diverge.
-  Three things follow, which is why this is a marked requirement rather than a quiet
-  addition: the universe size and its sector balance become visible and so are pinned in T2;
-  the shared poll must cover every symbol rather than a subscriber's subset, which rewrites
-  O14; and the dashboard watchlist becomes a genuinely curated subset, which means it needs a
-  starting state it never needed when it was the only list.
-- **[decided]** The PRNG seed is a fixed constant and the starting portfolio is fixed, so a
-  run is reproducible.
-- **[decided]** Backend outcomes are evidenced by `pytest` and commit at verification, per the
-  orchestrator's default.
-- **[decided]** **Frontend outcomes are verified by a human, not by a checker.** No frontend
-  test framework is installed and none is to be added. A frontend task's evidence is what the
-  implementor can actually produce — a build, a file, a grep — and its behavioural claim is
-  **deferred to human review**. See *Frontend evidence* below; it is the rule those tasks are
-  written against. Every frontend outcome is recorded `UNVERIFIED` — this is the expected
-  result, not a gap to be closed.
-- **[decided]** **Frontend tasks are not committed before human review.** T13–T24 land their
-  deliverables and their run record, and the orchestrator stops at the review boundary rather
-  than committing. This varies the standing commit rule, which `log-schema.md:196-200` allows
-  a spec to do in its Constraints. Backend tasks are unaffected.
-- **[decided]** Python is 3.12, pinned by `backend/.python-version`, and the environment is
-  managed by `uv`. Two traps this guards against, both observed on this machine:
-  - The system `python3` is 3.9.6, end of life since October 2025. A command resolving
-    `python3` from PATH gets that interpreter, so no task invokes `python3` directly.
-  - `requires-python = ">=3.12"` in `pyproject.toml` does **not** pin. uv selects the newest
-    installed version satisfying the range — here 3.14.6, which is already present. Only
-    `.python-version` (or an explicit `--python 3.12`) fixes the interpreter.
-- **[decided]** **Every backend command runs from `backend/`.** uv discovers a project by
-  searching the working directory and its ancestors, never its descendants, so `uv run` from
-  the repository root does not find `backend/pyproject.toml` and silently executes in an
-  ephemeral environment without the project's dependencies — no warning, no non-zero exit.
-  Backend evidence commands are therefore written `cd backend && uv run …`, mirroring the
-  frontend's `cd frontend && …`.
-- **[decided]** `GET /impact/portfolio` is declared before `GET /impact/{symbol}` in the same
-  router. The ordering is load-bearing, not stylistic.
-- **[decided, not from the input]** Each bar carries a synthetic volume, so that "most
-  active" ranks on something the model holds and stays currency-independent. The input
-  defines `/movers` but not what makes an instrument active.
-- The schema is emitted to a file by importing the app, not by running a server, so no task
+- Backend is FastAPI with Pydantic response models. No database.
+- Frontend is Angular: standalone components, RxJS, `HttpClient`.
+- Styling is hand-rolled CSS, dark theme. No UI or styling package.
+- Transport is HTTP polling. No WebSockets.
+- Frontend and API are cross-origin in dev. `CORSMiddleware` or an Angular dev proxy is
+  required for requests to reach the API at all.
+- No persistence layer, and nothing is abstracted in anticipation of one.
+
+**The model**
+
+- The factors are exactly: market, rates/duration, oil, USD, credit spread.
+- Betas are drawn from {−1, −0.5, 0, +0.5, +1}.
+- One tick is one second of wall time and represents one minute of market time.
+- Startup backfills 780 ticks.
+- The buffer caps at 5000 bars per instrument and discards the oldest.
+- Each bar carries a synthetic volume; `/movers` ranks *most active* on it.
+- The library holds 6 or 7 scenarios.
+- The PRNG seed is a fixed constant and the starting portfolio is fixed, so a run is
+  reproducible.
+- Position size is a float, never an integer.
+- Instruments carry a native currency and there is no FX rate anywhere. Portfolio value,
+  return and today's change are reported one set per currency and never summed across them.
+  A trade amount is in the instrument's native currency.
+
+**Surface**
+
+- The client polls `/quotes` on an RxJS interval of 2–3s through one shared service.
+- Chart timeframes are 1m, 5m, 15m and session.
+- The header carries the string `Simulated feed` on every view. This is required.
+- Exposure values such as `oil beta −0.9` never appear on a headline view.
+- The optional feature is the headlines ticker. Price alerts are out of scope.
+
+**Contract**
+
+- The client is generated by `ng-openapi-gen` and the output is committed, so the frontend
+  builds without the backend running.
+- `app.openapi_version` is pinned to `"3.0.2"`. FastAPI emits 3.1 by default and the
+  generator may reject it; pinning is unconditional because the task that would discover the
+  rejection is not the task that can fix it.
+- The schema is emitted to a file by importing the app, never by running a server, so no task
   depends on a live process.
+- `GET /impact/portfolio` is declared before `GET /impact/{symbol}` in the same router. The
+  ordering is load-bearing, not stylistic.
+
+**Off-limits**
+
+- WebSockets, offline support, Redis, multi-service deployment, options and greeks,
+  customisable multi-pane layouts, order matching against a simulated book.
+- User-authored scenarios, timed multi-stage event sequences, betas estimated from historical
+  data.
+
+**How the run is verified**
+
+- Backend outcomes are evidenced by `pytest` and commit at verification, per the
+  orchestrator's default.
+- **Frontend outcomes are verified by a human, not by a checker.** No frontend test framework
+  is installed and none is to be added. A frontend task's evidence is what the implementor can
+  actually produce — a build, a file, a grep — and its behavioural claim is **deferred to
+  human review**; *Frontend evidence* below is the rule those tasks are written against. Every
+  frontend outcome is recorded `UNVERIFIED`, which is the expected result and not a gap.
+- **Frontend tasks are not committed before human review.** T13–T26 land their deliverables
+  and their run record, and the orchestrator stops at the review boundary rather than
+  committing. This varies the standing commit rule, which `log-schema.md:196-200` allows a
+  spec to do here. Backend tasks are unaffected.
+- No price-level literal is asserted in any test — see the last bullet of this section.
+
+**The environment**
+
+- Python is 3.12, pinned by `backend/.python-version`, managed by `uv`. Two traps, both
+  observed on the target machine:
+  - The system `python3` is 3.9.6, end of life since October 2025. No task invokes `python3`
+    directly.
+  - `requires-python = ">=3.12"` does **not** pin — uv takes the newest installed version
+    satisfying the range, which on this machine is 3.14.6. Only `.python-version`, or an
+    explicit `--python 3.12`, fixes the interpreter.
+- **Every backend command runs from `backend/`.** uv finds a project by searching the working
+  directory and its ancestors, never its descendants, so `uv run` from the repository root
+  misses `backend/pyproject.toml` and executes in an ephemeral environment without the
+  project's dependencies — no warning, no non-zero exit. Backend commands are written
+  `cd backend && uv run …`, mirroring the frontend's `cd frontend && …`.
 - No price-level literal is asserted in any test. A fixed seed makes exact prices
   reproducible, but the only source for such a literal is the implementation itself, and a
   test that takes its expected value from the code under test cannot fail. Price behaviour is
@@ -347,10 +341,9 @@ every beta is one of {-1.0, -0.5, 0.0, 0.5, 1.0}; each macro driver has exposure
 own factor and 0.0 to the other four; and **at least two sectors contain a pair of
 instruments whose oil betas have opposite signs**. → serves **O12**, **O25**
 
-*The per-sector minimum and the opposing-beta pair exist because the markets table groups by
-sector. A sector holding one row renders as a header with nothing under it and reads as a
-bug, and a sector whose members all move together makes the table look like a sector model —
-which `app-features.md:172-175` is explicit it is not.*
+*The per-sector minimum and the opposing-beta pair are load-bearing for T26, which groups by
+sector: a sector holding one row renders as a header with nothing under it, and a sector whose
+members all move together makes the table read as a sector model rather than a factor one.*
 **Reads:** `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/data/instruments.json`
@@ -878,11 +871,11 @@ Recorded `UNVERIFIED`; held for human review before commit.
 grouped by sector, each group headed by its aggregate day change — so that a scenario reads
 as market-wide rather than as something confined to a curated watchlist.
 
-*This is the surface the factor model is visible on.* `app-features.md:54` chose the universe
-so scenarios "produce visible disagreement within sectors as well as between them", and
-`:172-175` is explicit that a coarse sector rule would be wrong — under an oil spike a
-producer gains while an airline suffers. Scattered through a flat list that is invisible.
-Grouped, with energy rising above travel as the shock lands, it needs no explanation.
+*This is the surface the factor model is visible on. The universe is built so that scenarios
+disagree within a sector as well as between sectors — under an oil spike a producer gains
+while an airline suffers, which a coarse sector rule would get wrong. Scattered through a flat
+list that is invisible. Grouped, with energy rising above travel as the shock lands, it needs
+no explanation.*
 
 **Outcome:** The table lists every instrument the universe holds, grouped by sector, each
 group headed by its aggregate day change; sector groups order by that aggregate and rows
