@@ -23,9 +23,6 @@ non-technical audience in a single view.
   `/openapi.json` contains no operation id of the form `<name>_<path>_<method>`.
 - **O8** `GET /impact/portfolio` returns a per-holding breakdown and never an instrument
   lookup for a symbol named `portfolio`.
-- **O9** A trade posted as an amount produces a fractional quantity equal to
-  `amount ÷ price` at execution, stored as a float, and the position's average entry
-  reflects it.
 - **O11** `GET /movers` returns gainers descending by day change %, losers ascending by day
   change %, and most active descending by session volume. Under an active scenario the
   membership of at least one of the three lists differs from baseline.
@@ -132,7 +129,7 @@ Bounds on how the system is built. Every line is binding on every task.
   anything, and thirteen stops for a demo nobody has built yet is the wrong trade.
   - **T13 holds.** The orchestrator lands its deliverables and its run record and stops. This
     is the one conformance gate: the shell and the token file either match
-    `.spec-artifacts/design/dashboard-mock.html` or they do not, and eleven tasks are built on
+    `.spec-artifacts/design/dashboard-mock.html` or they do not, and nine tasks are built on
     the answer.
   - **T14–T24 and T26 commit on their implementor evidence**, the way backend tasks do. Their
     behavioural claims are still recorded `UNVERIFIED` and still deferred — they accumulate
@@ -228,8 +225,6 @@ nothing below it matters.
 | **F7** | T17 | no column boundary moves as a price crosses a digit width |
 | **F8** | T17 | rising rows flash green, falling red |
 | **F9** | T15 | the summary shows value, return and today's change, above every other element |
-| **F10** | T20 | an amount yields a fractional quantity, and the summary updates |
-| **F11** | T18 | a two-character query matches, and omits a known non-match |
 | **F12** | T24 | peers are same-sector and ranked by impact |
 | **F13** | T19 | the four timeframes give visibly different bar counts |
 | **F14** | T16 | five macro tiles, in factor order, updating together |
@@ -310,13 +305,11 @@ can be stated independently of the file.
   feature slot in its final order at T13 and **is not edited again**. Feature tasks fill
   their own stub and touch nothing shared — created by **T13**
 - `frontend/src/app/core/quote.service.ts` — the single shared poll — created by **T14**
-- `frontend/src/app/core/watchlist.service.ts` — the watchlist's symbol list and the only way
-  to add to it, so search can write where the watchlist reads — created by **T17**
 - `frontend/src/app/core/scenario.service.ts` — the active scenario and its headlines, read by
   the selector and the ticker — created by **T22**
 
 **On the stubs.** T13 creates every feature component as a skeleton placeholder rendering its
-loading state, and the dashboard composes all ten from the start. Two things follow. The app
+loading state, and the dashboard composes all eight from the start. Two things follow. The app
 renders from T13 onward, so a human reviewing T17 sees it in place rather than in isolation —
 which matters when twelve tasks are verified by eye. And the feature tasks each `UPDATE` one
 file nobody else writes, instead of seven of them `UPDATE`-ing the shell in sequence.
@@ -339,7 +332,7 @@ header; and every model named below rejects a payload with a required field remo
 - CREATE `backend/pyproject.toml` declaring `fastapi`, `pydantic`, and a dev group with `pytest` and `httpx`
 - CREATE `backend/app/main.py`
 - CREATE `backend/app/models.py`
-- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `TradeRequest`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
+- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
 - CREATE `backend/tests/test_models.py`
 - CREATE `backend/tests/test_app.py`
 
@@ -500,26 +493,23 @@ day change equals `RingBuffer.day_change_pct` for the same symbol, that each tim
 bar count consistent with its aggregation factor, and that an unknown `tf` returns 422. Run
 before replying, output pasted.
 
-## T7 — Portfolio and the amount-denominated trade
+## T7 — Portfolio
 
-**Objective:** Serve paper positions with their totals, and accept a trade expressed as an
-amount in the universe's currency.
-**Outcome:** `POST /portfolio/trade` with an amount produces a position quantity equal to
-`amount ÷ price` as a float, updates the average entry on a second buy of the same symbol,
-and rejects an amount exceeding the cash balance. `GET /portfolio` returns one set of totals
-— value, return and today's change. → serves **O9**
+**Objective:** Serve the fixed paper positions and their totals, so the summary has something
+to show.
+**Outcome:** `GET /portfolio` returns every held position with its symbol, quantity and
+average entry, and one set of totals — value, return and today's change, using `day change %`
+as the Definitions define it. → serves no outcome directly; it is what the summary reads
 **Reads:** `backend/app/state.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/portfolio.py`
-- ADD function `get_portfolio`, `post_trade` in `backend/app/routers/portfolio.py`
-- ADD function `apply_trade(state, symbol, amount) -> Position` in `backend/app/state.py`
+- ADD function `get_portfolio` in `backend/app/routers/portfolio.py`
 - UPDATE `backend/app/main.py`
 - CREATE `backend/tests/test_portfolio.py`
 
-**Evidenced by:** `cd backend && uv run pytest tests/test_portfolio.py -v` — asserts the
-derived quantity is fractional and equals `amount ÷ price`, asserts the average entry after
-two buys at different prices, asserts an over-balance trade is rejected, and asserts the
-totals payload carries value, return and today's change. Run before replying, output pasted.
+**Evidenced by:** `cd backend && uv run pytest tests/test_portfolio.py -v` — asserts every
+starting position appears with a float quantity, and asserts the totals payload carries value,
+return and today's change. Run before replying, output pasted.
 
 ## T8 — Movers and the macro drivers strip
 
@@ -602,7 +592,7 @@ FastAPI default form `<name>_<path>_<method>`. → serves **O7**, **O13**
 
 **Evidenced by:** `cd backend && uv run python scripts/emit_openapi.py && uv run pytest
 tests/test_openapi.py -v` — asserts the emitted file's `openapi` field is exactly `3.0.2`,
-asserts all 13 operations carry an explicit id and a tag, and asserts none matches the
+asserts all 12 operations carry an explicit id and a tag, and asserts none matches the
 default-name pattern. Run before replying, output pasted.
 
 ## T12 — Angular workspace and the generated client
@@ -610,7 +600,7 @@ default-name pattern. Run before replying, output pasted.
 **Objective:** Create the complete Angular workspace — scaffold included — and generate the
 typed API client from the emitted schema, committing the output.
 **Outcome:** `npm run gen:api` regenerates the client from `backend/openapi.json`; the
-generated services cover all 13 operations; `npx ng build` succeeds with no backend process
+generated services cover all 12 operations; `npx ng build` succeeds with no backend process
 running and no file created by a later task present. → serves **O13**
 **Reads:** `backend/openapi.json`
 **Deliverables:**
@@ -628,8 +618,8 @@ running and no file created by a later task present. → serves **O13**
 
 **Evidenced by:** `cd frontend && npm install && npm run gen:api && npx ng build` — run with
 no backend process running, output pasted. Then, from `backend/`,
-`grep -o '"operationId": "[^"]*"' openapi.json | sort -u | wc -l` — confirming it is 13. Then,
-from `frontend/`, confirm each of those 13 operation ids appears at least once under
+`grep -o '"operationId": "[^"]*"' openapi.json | sort -u | wc -l` — confirming it is 12. Then,
+from `frontend/`, confirm each of those 12 operation ids appears at least once under
 `src/app/api/`, output pasted. Count against the contract, not against the generator's output
 shape — a per-file `grep -c` reports one line per file and the emitter may write more than one
 symbol per operation, so neither yields 13.
@@ -639,14 +629,14 @@ symbol per operation, so neither yields 13.
 
 **Objective:** Establish the token file, the shared formatters, the shell and the dashboard
 composition, and stub every feature slot as a skeleton, so that the app renders end to end
-from this task onward and the eleven that follow each fill one file nobody else writes.
+from this task onward and the nine that follow each fill one file nobody else writes.
 **Outcome:** `tokens.css` declares the neutral ramp, the two signal colours, the spacing
 scale, the type scale, the radii and the motion durations as custom properties, with body
 text meeting 4.5:1 against its background; `format.ts` exports the price, quantity and signed
 percentage formatters, the last emitting U+2212 for negatives; the shell renders a toolbar
 containing the exact string `Simulated feed` and a two-tab navigation — Dashboard and
 Markets — **outside** the `router-outlet`, so no route can render without them; the dashboard
-composes all ten feature slots with the portfolio summary first; every slot renders a
+composes all eight feature slots with the portfolio summary first; every slot renders a
 skeleton at its final dimensions; and no component source declares a hex colour, a `px` value
 or a millisecond duration. → serves **O16**, **O23**, **O24**
 **Reads:** `frontend/src/app/app.config.ts`, `.spec-artifacts/design/dashboard-mock.html` —
@@ -658,9 +648,9 @@ names and values, not a palette of this task's choosing
 - CREATE `frontend/src/app/core/format.ts`
 - ADD function `formatPrice(value: number, dp: number) -> string`, `formatQuantity(value: number) -> string`, `formatSignedPercent(value: number) -> string` in `frontend/src/app/core/format.ts`
 - CREATE `frontend/src/app/shell/shell.component.ts`
-- CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the ten slots in final order, portfolio summary first; routed at `/`
+- CREATE `frontend/src/app/dashboard/dashboard.component.ts` — composes the eight slots in final order, portfolio summary first; routed at `/`
 - CREATE `frontend/src/app/features/markets/markets.component.ts` as a skeleton placeholder; routed at `/markets`
-- FOR EACH path in `features/portfolio/portfolio-summary.component.ts`, `features/macro/macro-strip.component.ts`, `features/watchlist/watchlist.component.ts`, `features/search/symbol-search.component.ts`, `features/movers/movers.component.ts`, `features/scenario/scenario-selector.component.ts`, `features/ticker/headline-ticker.component.ts`, `features/detail/detail.component.ts`, `features/portfolio/trade-ticket.component.ts`, `features/impact/impact-panel.component.ts` — CREATE it under `frontend/src/app/` as a skeleton placeholder at final dimensions. These are the exact paths T15–T24 later `UPDATE`; a different directory breaks eleven tasks.
+- FOR EACH path in `features/portfolio/portfolio-summary.component.ts`, `features/macro/macro-strip.component.ts`, `features/watchlist/watchlist.component.ts`, `features/movers/movers.component.ts`, `features/scenario/scenario-selector.component.ts`, `features/ticker/headline-ticker.component.ts`, `features/detail/detail.component.ts`, `features/impact/impact-panel.component.ts` — CREATE it under `frontend/src/app/` as a skeleton placeholder at final dimensions. These are the exact paths T15–T24 later `UPDATE`; a different directory breaks eight tasks.
 - UPDATE `frontend/src/main.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
@@ -671,12 +661,12 @@ outside the outlet, so that it is structurally impossible for a route to render 
 Then paste `tokens.css`
 in full with the computed contrast ratio for body text on the page background, and paste the
 `dependencies` block of `package.json`. Then paste `dashboard.component.ts`'s template,
-which must show all ten slot selectors with `portfolio-summary` first, and the shell's
+which must show all eight slot selectors with `portfolio-summary` first, and the shell's
 template, which must contain the literal `Simulated feed`.
 **Deferred to human review:** the shell and the dashboard composition read as
 `.spec-artifacts/design/dashboard-mock.html` does — same ramp, same spacing, same type, slots
 in the same places. This is a conformance check against an approved file, not a taste
-judgement, and it is the one frontend stop before the final walk. Eleven tasks are built on
+judgement, and it is the one frontend stop before the final walk. Nine tasks are built on
 the answer, so it is held before commit.
 
 ## T14 — The shared quote poll
@@ -760,10 +750,8 @@ each poll without changing its box. On first load the list is the symbols held i
 **Reads:** `frontend/src/app/core/quote.service.ts`, `frontend/src/app/api/`,
 `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
 **Deliverables:**
-- CREATE `frontend/src/app/core/watchlist.service.ts` — holds the symbol list; the component renders it and T18 adds to it
-- ADD var `WATCHLIST_EXTRAS` in `frontend/src/app/core/watchlist.service.ts` — three symbols from sectors that move *against* the holdings, so the dashboard shows disagreement and not only the markets tab
-- ADD function `add(symbol: string)` in `frontend/src/app/core/watchlist.service.ts`
 - UPDATE `frontend/src/app/features/watchlist/watchlist.component.ts`
+- ADD var `WATCHLIST_EXTRAS` in `frontend/src/app/features/watchlist/watchlist.component.ts` — three symbols from sectors that move *against* the holdings, so the dashboard shows disagreement and not only the markets tab
 - CREATE `frontend/src/app/features/watchlist/sparkline.component.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the row styles,
@@ -771,24 +759,6 @@ showing the fixed row height, the fixed numeric column widths, `font-variant-num
 tabular-nums`, and the `prefers-reduced-motion` block — all as token references.
 **Deferred to human review:** a rising row flashes green and a falling row red; no column
 boundary moves as prices cross a digit-width change. Recorded `UNVERIFIED`; held for human
-review before commit.
-
-## T18 — Symbol search
-
-**Objective:** Fill the search slot with a box that fuzzy-matches the instrument list and adds
-a result to the watchlist.
-**Outcome:** Typing a partial symbol or name lists matching instruments and no non-matching
-one; selecting a result adds it to the watchlist. → serves **O14**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/watchlist.service.ts`, `frontend/src/styles/tokens.css`
-**Deliverables:**
-- UPDATE `frontend/src/app/features/search/symbol-search.component.ts`
-
-**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
-confirm results come from `GET /symbols` rather than from client-side filtering of a quote
-set, and that selecting a result calls `WatchlistService.add()` rather than mutating the
-watchlist component.
-**Deferred to human review:** a two-character query lists matches and omits a known
-non-match; selecting one adds it to the watchlist. Recorded `UNVERIFIED`; held for human
 review before commit.
 
 ## T19 — Instrument detail chart
@@ -809,23 +779,6 @@ scenario simply being selected.
 **Deferred to human review:** the four timeframes return visibly different bar counts; the
 marker appears with a scenario active and is absent at baseline. Recorded `UNVERIFIED`; held
 for human review before commit.
-
-## T20 — Trade ticket
-
-**Objective:** Fill the trade ticket slot with a form taking an amount in the instrument's
-currency, showing the derived quantity before submission.
-**Outcome:** The amount field is labelled with the selected instrument's currency; the
-derived quantity shown equals `amount ÷ price` and is fractional; submitting posts the amount,
-not a quantity. → serves **O9**
-**Reads:** `frontend/src/app/api/`, `frontend/src/app/core/format.ts`, `frontend/src/styles/tokens.css`
-**Deliverables:**
-- UPDATE `frontend/src/app/features/portfolio/trade-ticket.component.ts`
-
-**Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the submit handler,
-confirming the request body carries an amount and no quantity field, and paste the currency
-label binding.
-**Deferred to human review:** entering an amount shows a fractional quantity, and submitting
-updates the portfolio summary. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T21 — Top movers
 
