@@ -1,0 +1,29 @@
+{
+  "seq": 5,
+  "spec": "trading-demo-backend",
+  "task": "T4",
+  "dispatched": false,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T4-bar-and-ring-buffer.md",
+
+  "started": "2026-09-15T23:40:05Z",
+  "ended": "2026-09-15T23:41:26Z",
+  "duration_s": 81,
+
+  "model": { "requested": "claude-opus-5", "actual": null },
+  "usage": { "turns": null, "input": null, "output": null,
+             "cache_write": null, "cache_read": null },
+
+  "gate": {
+    "passed": false,
+    "defect": "Gate question 5 — the prompt and its spec block disagree, and the prompt is what gets sent. dbb7f79 authored the boundary behaviour in the spec's Definitions under 'Buffer boundaries' (day_change_pct raises on an empty buffer or where the session-start bar is not held; session_volume returns the sum of what it holds). The spec's T4 Outcome inherits it by reference — 'compute against tick index 390 boundaries as the Definitions state'. The prompt's Task context reproduces the other Definitions entries but not this one, names no path to the spec, and its Constraints still read 'If the definitions above leave a boundary case undetermined — the first session, a buffer shorter than one session — STOP and report which, rather than choosing silently.' Within the prompt the case is still undetermined, so the prompt now instructs the implementor to stop on precisely the question the author has just answered. The only change dbb7f79 made to this prompt was the factor keys. Secondary: the raise is now required behaviour and neither the prompt's nor the spec's Evidenced-by asserts it — run 004 tested it voluntarily, under a test named for the definitions not reaching, which is no longer true."
+  },
+
+  "deliverables": [],
+  "evidence": [],
+
+  "status": { "run": "REFUSED", "deliverables": "—", "outcome": "—" },
+  "commits": { "deliverables": null, "log": null },
+  "escalations": [
+    "T4 re-run refused before dispatch: the factor-key fix landed in the prompt, the Buffer boundaries decision did not. A compliant implementor would STOP as its Constraints instruct; a non-compliant one would decide the question a second time."
+  ]
+}
