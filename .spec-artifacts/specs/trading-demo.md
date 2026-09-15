@@ -127,12 +127,20 @@ Bounds on how the system is built. Every line is binding on every task.
   actually produce — a build, a file, a grep — and its behavioural claim is **deferred to
   human review**; *Frontend evidence* below is the rule those tasks are written against. Every
   frontend outcome is recorded `UNVERIFIED`, which is the expected result and not a gap.
-- **Frontend tasks are not committed before human review.** T13–T24 and T26 land their
-  deliverables and their run record, and the orchestrator stops at the review boundary rather
-  than committing. This varies the standing commit rule, which `log-schema.md:196-200` allows a
-  spec to do here. Backend tasks are unaffected — including **T25**, which sits inside that
-  range by reading order but is the backend tick engine and commits at verification like every
-  other backend task.
+- **The frontend stops for review twice, not thirteen times.** Because the visual target is
+  approved before the run — see *Visual design* — a per-task taste judgement no longer buys
+  anything, and thirteen stops for a demo nobody has built yet is the wrong trade.
+  - **T13 holds.** The orchestrator lands its deliverables and its run record and stops. This
+    is the one conformance gate: the shell and the token file either match
+    `.spec-artifacts/design/dashboard-mock.html` or they do not, and eleven tasks are built on
+    the answer.
+  - **T14–T24 and T26 commit on their implementor evidence**, the way backend tasks do. Their
+    behavioural claims are still recorded `UNVERIFIED` and still deferred — they accumulate
+    into the single review walk below, taken once after T26.
+  - This varies the standing commit rule, which `log-schema.md:196-200` allows a spec to do
+    here. Backend tasks are unaffected — including **T25**, which sits inside that range by
+    reading order but is the backend tick engine and commits at verification like every other
+    backend task.
 - No price-level literal is asserted in any test — see the last bullet of this section.
 
 **The environment**
@@ -190,10 +198,13 @@ Every frontend task therefore splits its evidence in two:
 
 ### The review order
 
-Twelve tasks each deferring two or three items is roughly two dozen checks, and a reviewer
-walking them in task order walks them in the order they were *built*, not the order in which
-they matter. A rushed pass down that list spends its attention on tile ordering and reaches
-the feature the demo exists for last.
+Twelve tasks each deferring two or three items is eighteen checks, and a reviewer walking them
+in task order walks them in the order they were *built*, not the order in which they matter. A
+rushed pass down that list spends its attention on tile ordering and reaches the feature the
+demo exists for last.
+
+This is the **second** of the two frontend stops, taken once after T26 with everything in
+place. The first is T13's conformance gate against the mockup, which is not in this index.
 
 So the review has one order, below, and it is an **index** — each row names the task that
 defers the item and a short label. The wording that governs lives in the task block and
@@ -232,9 +243,18 @@ framework.
 
 ## Visual design
 
-The frontend must read as a professional trading product, not as a demo of one. Taste is
-judged at human review; the rules below are the part that is not a matter of taste, and they
-are what stop twelve components each inventing their own greys and spacing.
+The frontend must read as a professional trading product, not as a demo of one.
+
+**`.spec-artifacts/design/dashboard-mock.html` is the approved visual target**, and it is
+where the taste judgement has already been made. It is a static reference — no framework, no
+data, no polling — showing both routes with a scenario active. Its `:root` block is the token
+file: T13 copies those custom properties into `frontend/src/styles/tokens.css` with the same
+names and the same values rather than choosing a palette, a spacing scale or a type scale of
+its own. Below that block the mockup itself contains no raw value, which is the rule O23
+places on component source, so the file demonstrates the convention it establishes.
+
+A component conforms to the mockup or it is wrong. The rules below are the part of that which
+can be stated independently of the file.
 
 - **One token file is the only source of visual values.** No component declares a raw hex
   colour, a `px` value of any kind — type size, spacing, border width or radius — or a motion
@@ -629,7 +649,9 @@ Markets — **outside** the `router-outlet`, so no route can render without them
 composes all ten feature slots with the portfolio summary first; every slot renders a
 skeleton at its final dimensions; and no component source declares a hex colour, a `px` value
 or a millisecond duration. → serves **O16**, **O23**, **O24**
-**Reads:** `frontend/src/app/app.config.ts`
+**Reads:** `frontend/src/app/app.config.ts`, `.spec-artifacts/design/dashboard-mock.html` —
+the approved visual target; `tokens.css` is its `:root` block, copied with the same property
+names and values, not a palette of this task's choosing
 **Deliverables:**
 - CREATE `frontend/src/styles/tokens.css`
 - UPDATE `frontend/src/styles.css` — imports `styles/tokens.css`
@@ -651,9 +673,11 @@ in full with the computed contrast ratio for body text on the page background, a
 `dependencies` block of `package.json`. Then paste `dashboard.component.ts`'s template,
 which must show all ten slot selectors with `portfolio-summary` first, and the shell's
 template, which must contain the literal `Simulated feed`.
-**Deferred to human review:** none — every clause of this task's outcome is established by a
-file this task writes. It is still held for review before commit, because the taste judgement
-the whole visual system rests on is made here and nowhere else.
+**Deferred to human review:** the shell and the dashboard composition read as
+`.spec-artifacts/design/dashboard-mock.html` does — same ramp, same spacing, same type, slots
+in the same places. This is a conformance check against an approved file, not a taste
+judgement, and it is the one frontend stop before the final walk. Eleven tasks are built on
+the answer, so it is held before commit.
 
 ## T14 — The shared quote poll
 
@@ -701,7 +725,7 @@ dashboard's first slot
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component's
 template showing the three figures bound through `format.ts`.
 **Deferred to human review:** the summary renders value, return and today's change, and sits
-above every other element. Recorded `UNVERIFIED`; held for human review before commit.
+above every other element. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T16 — Macro drivers strip
 
@@ -716,7 +740,7 @@ poll rather than polling independently. → serves **O12**, **O14**
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
 confirm it injects `QuoteService` and creates no `interval` of its own.
 **Deferred to human review:** five tiles render in factor order and update together.
-Recorded `UNVERIFIED`; held for human review before commit.
+Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T17 — Watchlist
 
@@ -801,7 +825,7 @@ not a quantity. → serves **O9**
 confirming the request body carries an amount and no quantity field, and paste the currency
 label binding.
 **Deferred to human review:** entering an amount shows a fractional quantity, and submitting
-updates the portfolio summary. Recorded `UNVERIFIED`; held for human review before commit.
+updates the portfolio summary. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T21 — Top movers
 
@@ -817,7 +841,7 @@ repopulate under a scenario.
 confirm no sort or `orderBy` is applied to the three lists client-side — the API's ordering is
 the contract, and re-sorting here would silently mask a backend defect.
 **Deferred to human review:** activating the oil supply shock visibly changes the membership
-of at least one list. Recorded `UNVERIFIED`; held for human review before commit.
+of at least one list. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T22 — Scenario selector
 
@@ -835,7 +859,7 @@ shows as a chip. → serves **O15**
 handler, showing `refreshNow()` is called in the POST's success path and not merely alongside
 it, and paste the literal string `Reset to normal` as the first option.
 **Deferred to human review:** the watchlist visibly updates on selection without waiting out
-the poll interval. Recorded `UNVERIFIED`; held for human review before commit.
+the poll interval. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T23 — Headlines ticker
 
@@ -850,7 +874,7 @@ baseline. → serves **O21**
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then paste the component and
 confirm the headlines come from `GET /scenario` rather than from a copy held in the frontend.
 **Deferred to human review:** the strip swaps to the new headlines within one refresh of a
-scenario change. Recorded `UNVERIFIED`; held for human review before commit.
+scenario change. Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T24 — Impact panel
 
@@ -870,7 +894,7 @@ template and confirm it binds no beta or exposure field, and that the bar list i
 three in the template rather than by the data happening to be short.
 **Deferred to human review:** the collapsed panel reads as plain language with no exposure
 values; expanding reveals the full attribution; peers are same-sector and ranked by impact.
-Recorded `UNVERIFIED`; held for human review before commit.
+Recorded `UNVERIFIED`; carried to the final review walk, not held before commit.
 
 ## T26 — Markets table
 
@@ -900,5 +924,7 @@ rather than from each poll. → serves **O14**, **O22**, **O25**
 showing `ChangeDetectionStrategy.OnPush`, a `trackBy` keyed on symbol, the single
 `GET /symbols` call outside the poll subscription, and the pane's fixed-height style with the
 sticky header — all as token references.
-**Deferred to human review:** checklist items **F1b**, **F6b** and **F6c**. Recorded
-`UNVERIFIED`; held for human review before commit.
+**Deferred to human review:** the oil shock reorders the sector groups so energy sits above
+travel; switching to this tab and back does not add a second poll; and the pane's scroll
+position survives a poll without the pane resizing. Recorded `UNVERIFIED`; carried to the
+final review walk, not held before commit.
