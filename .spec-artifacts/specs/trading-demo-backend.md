@@ -43,6 +43,7 @@ Bounds on how the system is built. Every line is binding on every task.
 
 - Backend is FastAPI with Pydantic response models. No database.
 - Frontend and API are cross-origin in dev. `CORSMiddleware` or an Angular dev proxy is
+  required for requests to reach the API at all.
 - No persistence layer, and nothing is abstracted in anticipation of one.
 
 **The model**
@@ -104,10 +105,6 @@ Bounds on how the system is built. Every line is binding on every task.
   misses `backend/pyproject.toml` and executes in an ephemeral environment without the
   project's dependencies — no warning, no non-zero exit. Backend commands are written
   `cd backend && uv run …`, mirroring the frontend's `cd frontend && …`.
-- No price-level literal is asserted in any test. A fixed seed makes exact prices
-  reproducible, but the only source for such a literal is the implementation itself, and a
-  test that takes its expected value from the code under test cannot fail. Price behaviour is
-  asserted as properties: positivity, reconciliation, ordering and boundedness.
 
 ## Definitions
 
@@ -127,6 +124,74 @@ separately is four different answers with nothing marking which is right.
   `volume: float`, `contributions: dict[str, float]` with exactly one entry per factor, and
   `residual: float`. O5's reconciliation is `sum(contributions.values()) + residual` against
   `log(close / previous_close)`.
+
+## Response models
+
+The contract. **T1 declares these and every later route returns them**; T11 emits them as the
+schema and the frontend spec generates its client from that emission, so a field added after
+T11 is a contract change, not a detail. A field named here is required unless it is written
+`| None`, and a nullable field is declared **without a default** — it is therefore always
+present in the payload with `null` permitted, so the generated client sees a key that is
+always there rather than one that may be absent.
+
+**Market**
+
+- **`Quote`** — `symbol: str`, `last: float`, `day_change_pct: float`,
+  `sparkline: list[float]`. The sparkline is recent closes, oldest first and the latest last —
+  prices, not returns, drawn on their own scale. This settles it for T6 and for the frontend;
+  neither chooses.
+- **`Candle`** — `t: int` (tick index of the bar's first constituent tick), `open`, `high`,
+  `low`, `close`, `volume: float`.
+- **`SymbolMatch`** — `symbol: str`, `name: str`, `sector: str`, `currency: str`,
+  `decimals: int`. With `q` omitted this is the static metadata the markets table loads once
+  rather than on every poll.
+
+**Portfolio**
+
+- **`Position`** — `symbol: str`, `quantity: float`, `avg_entry: float`,
+  `unrealised_pnl: float`.
+- **`PortfolioTotals`** — `value: float`, `cash: float`, `total_return: float`,
+  `total_return_pct: float`, `day_change: float`, `day_change_pct: float`. One set of figures:
+  there is no FX rate, so there is nothing to sum across.
+- **`PortfolioResponse`** — `positions: list[Position]`, `totals: PortfolioTotals`.
+
+**Movers and macro**
+
+- **`Mover`** — `symbol: str`, `last: float`, `day_change_pct: float`,
+  `session_volume: float`.
+- **`MoversResponse`** — `gainers`, `losers`, `most_active`, each `list[Mover]`. The API's
+  ordering is the contract; the client re-sorts nothing.
+- **`MacroDriver`** — `symbol: str`, `name: str`, `factor: str`, `last: float`,
+  `day_change_pct: float`.
+
+**Scenarios**
+
+- **`ScenarioSummary`** — `id: str`, `name: str`, `description: str`.
+- **`ActiveScenario`** — `id: str`, `name: str`, `headlines: list[str]`,
+  `activated_at: int | None`.
+
+`id` is `str` and not the `ScenarioId` enum, deliberately. `ScenarioId` lives in
+`backend/app/scenarios.py`, whose task reads `backend/app/models.py`, so importing the enum
+here would be a cycle. The enum still does its job at the boundary: the scenario routes
+validate against it and reject an unknown id with a 422.
+
+**Impact and attribution**
+
+- **`FactorContribution`** — `factor: str`, `exposure: float`, `factor_move_pct: float`,
+  `contribution: float` (log-space, `beta × factor move`), `sentence: str`. The sentence
+  carries no beta and no exposure value; `exposure` is for the expanded detail only.
+- **`PeerImpact`** — `symbol: str`, `name: str`, `move_pct: float`. One same-sector peer.
+- **`SymbolImpact`** — `symbol: str`, `move_pct: float` (headline,
+  `(close_now / close_at_activation − 1) × 100`), `log_return: float`
+  (`log(close_now / close_at_activation)`, which the contributions plus the residual reconcile
+  with to within 1e-6), `contributions: list[FactorContribution]` ordered by descending
+  absolute contribution, `residual: float`, `position_impact: float | None`,
+  `peers: list[PeerImpact]` ranked by descending absolute `move_pct`.
+- **`PortfolioImpact`** — `holdings: list[SymbolImpact]`, `total_impact: float`.
+
+`peers` is a field rather than a second request. The frontend spec's impact panel ranks
+same-sector instruments by impact, and without it that component would issue one
+`/impact/{symbol}` call per peer.
 
 # Shared
 
@@ -148,7 +213,8 @@ Ordered for reading, not for execution.
 that later tasks add routes to an app that already exists and a contract that is already fixed.
 **Outcome:** `uv run python -V` reports 3.12; `app.main` exposes a FastAPI instance whose
 CORS middleware answers a cross-origin preflight with an `access-control-allow-origin`
-header; and every model named below rejects a payload with a required field removed.
+header; and every model in *Response models* carries exactly the fields stated there and
+rejects a payload with a required field removed.
 → serves **O7**
 **Reads:** nothing — this is the first task.
 **Deliverables:**
@@ -156,7 +222,7 @@ header; and every model named below rejects a payload with a required field remo
 - CREATE `backend/pyproject.toml` declaring `fastapi`, `pydantic`, and a dev group with `pytest` and `httpx`
 - CREATE `backend/app/main.py`
 - CREATE `backend/app/models.py`
-- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py`
+- ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`, `PortfolioResponse`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`, `ActiveScenario`, `FactorContribution`, `PeerImpact`, `SymbolImpact`, `PortfolioImpact` in `backend/app/models.py` — fields exactly as *Response models* states
 - CREATE `backend/tests/test_models.py`
 - CREATE `backend/tests/test_app.py`
 
@@ -304,7 +370,8 @@ instrument, and with `q` omitted or empty returns the whole universe with each e
 sector, currency and decimal places — this being how the markets table loads its static
 metadata once instead of per poll; `GET /quotes?symbols=` returns one quote per requested
 symbol in request order
-carrying last price, `day change %` as the Definitions define it, and a sparkline;
+carrying last price, `day change %` as the Definitions define it, and a sparkline shaped as
+*Response models* states;
 `GET /candles/{symbol}?tf=` aggregates the buffer into 1m, 5m, 15m and session bars, and an
 unknown `tf` is rejected rather than silently defaulted. → serves **O7**
 **Reads:** `backend/app/state.py`, `backend/app/models.py`
@@ -384,8 +451,9 @@ returns 422. Run before replying, output pasted.
 **Objective:** Serve the scenario impact breakdown for one instrument and for the portfolio,
 summed from the stored per-tick contributions.
 **Outcome:** `GET /impact/{symbol}` returns the move since activation with its factor
-contributions ordered largest absolute first, a residual, and a templated sentence per
-factor; the contributions plus residual reconcile with the headline move to within 1e-6.
+contributions ordered largest absolute first, a residual, a templated sentence per factor,
+and its same-sector peers ranked by descending absolute move; the contributions plus residual
+reconcile with the headline move to within 1e-6.
 `GET /impact/portfolio` returns a per-holding breakdown and is never resolved as a symbol
 lookup. → serves **O5**, **O8**
 **Reads:** `backend/app/state.py`, `backend/app/buffer.py`, `backend/app/models.py`

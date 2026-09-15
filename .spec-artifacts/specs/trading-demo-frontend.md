@@ -54,6 +54,7 @@ Bounds on how the system is built. Every line is binding on every task.
 - Styling is hand-rolled CSS, dark theme. No UI or styling package.
 - Transport is HTTP polling. No WebSockets.
 - Frontend and API are cross-origin in dev. `CORSMiddleware` or an Angular dev proxy is
+  required for requests to reach the API at all.
 
 **Surface**
 

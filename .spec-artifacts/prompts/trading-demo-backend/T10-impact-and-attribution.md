@@ -13,15 +13,18 @@ stored per-tick contributions, so the frontend can explain a move in plain langu
 # Outcome
 
 `GET /impact/{symbol}` returns the move since activation with its factor contributions ordered
-largest absolute first, a residual, and a templated sentence per factor; the contributions plus
-residual reconcile with the headline move to within 1e-6. `GET /impact/portfolio` returns a
+largest absolute first, a residual, a templated sentence per factor, and its same-sector peers
+ranked by descending absolute move; the contributions plus residual reconcile with the
+headline move to within 1e-6. `GET /impact/portfolio` returns a
 per-holding breakdown and is never resolved as a symbol lookup.
 
 - **Evidenced by:** `cd backend && uv run pytest tests/test_impact.py -v` — asserts the
   reconciliation to 1e-6 and reports the worst residual observed; asserts the contribution
   ordering is by descending absolute value, pairwise across the whole list; and asserts
-  `GET /impact/portfolio` returns the portfolio payload rather than a 404 or a symbol payload.
-  Run before replying and paste the output.
+  `GET /impact/portfolio` returns the portfolio payload rather than a 404 or a symbol payload;
+  and asserts `peers` holds only same-sector instruments, excludes the subject symbol, and is
+  ordered by descending absolute move, reporting the count it found for a named symbol. Run
+  before replying and paste the output.
 
 # Task context
 
@@ -62,7 +65,9 @@ per-holding breakdown and is never resolved as a symbol lookup.
 - Sentences in `FACTOR_SENTENCES` contain no beta, no exposure value and no factor jargon.
   They are read by a non-technical audience.
 - Ordering is by descending **absolute** contribution, so a large negative ranks above a small
-  positive.
+  positive. `peers` is ordered the same way, by absolute `move_pct`.
+- `peers` is a field on the response, not a second request. The frontend's impact panel ranks
+  same-sector instruments by impact and would otherwise issue one call per peer.
 - No price-level literal is asserted in any test.
 - Both routes declare a `response_model` and a tag.
 - If the stored contributions do not reconcile to 1e-6, STOP and report it as a defect in T25

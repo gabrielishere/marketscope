@@ -35,6 +35,8 @@ rather than silently defaulted.
   instead of on every poll. It is not a convenience; a later task depends on it.
 - Chart timeframes are exactly 1m, 5m, 15m and session.
 - Request order matters on `/quotes` because the client selects from the result positionally.
+- **The sparkline's shape is settled** in the spec's *Response models*: `list[float]`, recent
+  closes oldest first with the latest last, prices rather than returns. Take it from there.
 - Every route declares a `response_model` and a tag. Explicit operation ids arrive in T11, but
   the response model and tag are set here.
 
@@ -57,13 +59,10 @@ rather than silently defaulted.
 - Read `day change %` through `RingBuffer.day_change_pct`. Do not recompute it in the router.
 - An unknown `tf` returns 422. Do not fall back to a default timeframe.
 - No price-level literal is asserted in any test.
-- The sparkline's shape is not specified by the spec. Choose one, state it in your reply, and
-  keep it consistent — a later frontend task consumes it and cannot ask.
 - If the fuzzy match cannot both include a partial symbol and exclude a known non-match with
   one rule, STOP and report the conflict rather than loosening the test.
 
 # Response format
 
 One line per deliverable, done or not done. Then one line per outcome clause with its
-evidence. Then the pasted test output. Then state the sparkline's shape — the field's type and
-what its values mean — as one sentence, since the frontend spec must match it.
+evidence. Then the pasted test output.

@@ -9,22 +9,27 @@ model: claude-opus-5
 
 Create the FastAPI application and the Pydantic response models every route returns, so that
 every later task adds routes to an app that already exists and against a contract that is
-already fixed. This is the first task in `trading-demo-backend`; nothing exists under
-`backend/` yet.
+already fixed.
+
+**The fields of all fifteen models are stated in the spec's *Response models* section.** Take
+every field, type and nullability from there. Do not design a shape and do not omit a field.
 
 # Outcome
 
 `uv run python -V` reports 3.12. `app.main` exposes a FastAPI instance whose CORS middleware
 answers a cross-origin preflight with an `access-control-allow-origin` header. Each of the
-fourteen models below rejects a payload with a required field removed.
+fifteen models carries exactly the fields *Response models* states and rejects a payload with
+a required field removed.
 
 - **Evidenced by:** `cd backend && uv run python -V && uv run pytest tests/ -v` — the version
   line must read 3.12; `test_app.py` issues an `OPTIONS` preflight through `TestClient` and
-  asserts the allow-origin header is present; `test_models.py` asserts each of the fourteen
-  models rejects a payload with a required field removed. The run must collect **at least 15
-  tests** and all must pass — fourteen model rejections plus the preflight. A green run with
-  fewer than 15 collected means models are missing, not that the suite is fine. Run before
-  replying and paste the output.
+  asserts the allow-origin header is present; `test_models.py` asserts, for each of the
+  fifteen models, that it rejects a payload with a required field removed **and** that its
+  field names equal exactly the set *Response models* states — so a model with a missing or an
+  extra field fails. The run must collect **at least 31 tests** and all must pass: fifteen
+  rejection cases, fifteen field-set cases, and the preflight. A green run collecting fewer
+  means models are missing, not that the suite is fine. Run before replying and paste the
+  output.
 
 # Task context
 
@@ -43,7 +48,7 @@ fourteen models below rejects a payload with a required field removed.
 - **CREATE** `backend/pyproject.toml` — declaring `fastapi`, `pydantic`, and a dev group with
   `pytest` and `httpx`
 - **CREATE** `backend/app/main.py` — the FastAPI instance and its CORS middleware
-- **CREATE** `backend/app/models.py` — the fourteen response models
+- **CREATE** `backend/app/models.py` — the fifteen response models, fields per *Response models*
 - **Evidence:** `backend/tests/test_models.py`, `backend/tests/test_app.py`
 
 # Instructions
@@ -54,7 +59,7 @@ fourteen models below rejects a payload with a required field removed.
 4. CREATE `backend/app/models.py`
 5. ADD type `Quote`, `Candle`, `SymbolMatch`, `Position`, `PortfolioTotals`,
    `PortfolioResponse`, `Mover`, `MoversResponse`, `MacroDriver`, `ScenarioSummary`,
-   `ActiveScenario`, `FactorContribution`, `SymbolImpact`, `PortfolioImpact` in
+   `ActiveScenario`, `FactorContribution`, `PeerImpact`, `SymbolImpact`, `PortfolioImpact` in
    `backend/app/models.py`
 6. CREATE `backend/tests/test_models.py`
 7. CREATE `backend/tests/test_app.py`
@@ -67,12 +72,15 @@ fourteen models below rejects a payload with a required field removed.
 - Declare no dependency beyond the four named. No ASGI server is declared: the schema is
   emitted in T11 by importing the app, never by running one.
 - Every model field is explicitly typed. No bare `dict` or `Any` where a shape is known.
-- If a model's shape is not determinable from this prompt, STOP and report which — do not
-  invent a field and do not leave one out to make the task pass.
+- Every shape is stated in *Response models*. If a field there is ambiguous, STOP and report
+  which — do not resolve it yourself. The contract is frozen by T11 and the frontend generates
+  its client from it, so a shape chosen here rather than authored is a decision nobody made.
+- A nullable field is declared without a default, so it is required and always present with
+  `null` permitted.
 
 # Response format
 
 First, one line per deliverable marked done or not done. Then one line per outcome clause —
-the Python version, the preflight header, the model rejections — each with the evidence for
-it. Then the pasted output of the evidence command in full, including the collected count.
+the Python version, the preflight header, the field sets, the model rejections — each with the
+evidence for it. Then the pasted output of the evidence command in full, including the collected count.
 State that count explicitly as a number.
