@@ -23,8 +23,10 @@ rather than silently defaulted.
   match excludes a named known non-match, that quote order follows request order for a
   deliberately unsorted request, that the returned day change equals
   `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a bar count
-  consistent with its aggregation factor, and that an unknown `tf` returns 422. Run before
-  replying and paste the output.
+  consistent with its aggregation factor, that every quote carries a non-empty `sparkline` of
+  floats whose last element is the latest close, and that an unknown `tf` returns 422. Nothing
+  else in this suite reads the sparkline, so without that assertion a `Quote` returning an
+  empty list passes. Run before replying and paste the output.
 
 # Task context
 
@@ -35,7 +37,8 @@ rather than silently defaulted.
   instead of on every poll. It is not a convenience; a later task depends on it.
 - Chart timeframes are exactly 1m, 5m, 15m and session.
 - Request order matters on `/quotes` because the client selects from the result positionally.
-- **The sparkline's shape is settled** in the spec's *Response models*: `list[float]`, recent
+- **The sparkline's shape is settled** in `## Response models` in
+  `.spec-artifacts/specs/trading-demo-backend.md`: `list[float]`, recent
   closes oldest first with the latest last, prices rather than returns. Take it from there.
 - Every route declares a `response_model` and a tag. Explicit operation ids arrive in T11, but
   the response model and tag are set here.

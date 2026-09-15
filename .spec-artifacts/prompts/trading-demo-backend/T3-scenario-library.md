@@ -21,8 +21,11 @@ present in the JSON.
 - **Evidenced by:** `cd backend && uv run pytest tests/test_scenarios.py -v` — asserts the
   library size is 6 or 7, the baseline's shocks and drifts are all zero, that an oil supply
   shock is present by id, that every scenario's headline count is 2 or 3, that each
-  non-baseline scenario names at least two factors, and that the enum members and the JSON ids
-  are the same set compared both ways. Run before replying and paste the output.
+  non-baseline scenario names at least two factors, that the enum members and the JSON ids are
+  the same set compared both ways, and that every scenario carries a per-factor shock, drift
+  and half-life plus a scenario-level volatility multiplier. Those last four are declared by
+  the Objective and read by nothing else in this task, so without asserting them a `Scenario`
+  that omits them passes. Run before replying and paste the output.
 
 # Task context
 

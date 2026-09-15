@@ -228,8 +228,9 @@ rejects a payload with a required field removed.
 
 **Evidenced by:** `cd backend && uv run python -V && uv run pytest tests/ -v` — the version
 line must read 3.12; `test_app.py` issues an `OPTIONS` preflight through `TestClient` and
-asserts the allow-origin header is present; `test_models.py` asserts each of the fifteen
-models rejects a payload with a required field removed. Run before replying, output pasted.
+asserts the allow-origin header is present; `test_models.py` asserts, for each of the fifteen
+models, that its field names equal exactly the set *Response models* states and that it
+rejects a payload with a required field removed. Run before replying, output pasted.
 
 ## T2 — Instrument universe
 
@@ -281,8 +282,11 @@ the ids present in the JSON. → serves **O21**
 - CREATE `backend/tests/test_scenarios.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_scenarios.py -v` — asserts the
-library size, the baseline's zeroed factors, the headline counts, and that the enum members
-and the JSON ids are the same set. Run before replying, output pasted.
+library size, the baseline's zeroed factors, the headline counts, that the enum members and
+the JSON ids are the same set, and that every scenario carries a per-factor shock, drift and
+half-life and a scenario-level volatility multiplier — the last four being declared by the
+Objective and read by nothing else here, so without this a `Scenario` omitting them passes.
+Run before replying, output pasted.
 
 ## T4 — Bar and the bounded ring buffer
 
@@ -309,11 +313,15 @@ structure **T25** appends to
 - ADD function `session_volume(self) -> float` in `backend/app/buffer.py`
 - CREATE `backend/tests/test_buffer.py`
 
-**Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts the cap and
-the eviction order at the cap boundary, and asserts `day_change_pct` and
-`session_volume` against bars constructed by hand across a known tick-390 boundary, with the
-expected values written as literals taken from the Definitions rather than from the code. Run
-before replying, output pasted.
+**Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts that `Bar`'s
+field names equal exactly the set the Definitions state, that `contributions` holds one entry
+per factor keyed by the five factor names, and that a `Bar` cannot be constructed without
+`contributions` or without `residual`; asserts the cap and the eviction order at the cap
+boundary; and asserts `day_change_pct` and `session_volume` against bars constructed by hand
+across a known tick-390 boundary, with the expected values written as literals taken from the
+Definitions rather than from the code. The field-set assertions exist because a session-window
+query reads only `t`, `close` and `volume` — without them this suite passes against a `Bar`
+carrying no attribution at all. Run before replying, output pasted.
 
 ## T25 — The tick engine
 
@@ -333,9 +341,9 @@ to within 1e-6. → serves **O1**, **O3**, **O5**
 - CREATE `backend/tests/test_sim.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-clause: positivity over 1200 ticks for each scenario in the library, and contribution
-reconciliation to 1e-6. No price literal is asserted, per Constraints. Run before replying,
-output pasted.
+clause: that one `tick()` appends exactly one bar to every instrument, positivity over 1200
+ticks for each scenario in the library, and contribution reconciliation to 1e-6. No price
+literal is asserted, per Constraints. Run before replying, output pasted.
 
 ## T5 — In-process state, fixed-seed backfill and the tick loop
 
@@ -384,8 +392,9 @@ unknown `tf` is rejected rather than silently defaulted. → serves **O7**
 **Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
 match excludes a known non-match, that quote order follows request order, that the returned
 day change equals `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a
-bar count consistent with its aggregation factor, and that an unknown `tf` returns 422. Run
-before replying, output pasted.
+bar count consistent with its aggregation factor, that every quote carries a non-empty
+`sparkline` of floats ordered oldest first, and that an unknown `tf` returns 422. Run before
+replying, output pasted.
 
 ## T7 — Portfolio
 
@@ -443,8 +452,9 @@ it. → serves **O6**, **O21**
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_scenario_routes.py -v` — snapshots
 every bar before a POST and asserts the pre-activation slice is identical afterwards, asserts
-`activated_at` is set on activation and cleared on delete, and asserts an unknown scenario id
-returns 422. Run before replying, output pasted.
+`GET /scenarios` returns every id in the library, asserts `GET /scenario` carries the active
+scenario's headlines, asserts `activated_at` is set on activation and cleared on delete, and
+asserts an unknown scenario id returns 422. Run before replying, output pasted.
 
 ## T10 — Impact and attribution endpoints
 

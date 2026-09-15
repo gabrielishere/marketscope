@@ -1,6 +1,6 @@
 ---
 name: backend-skeleton-and-models
-description: Create the FastAPI app, its CORS middleware and the fourteen Pydantic response models every route returns.
+description: Create the FastAPI app, its CORS middleware and the fifteen Pydantic response models every route returns.
 task: T1
 model: claude-opus-5
 ---
@@ -11,7 +11,10 @@ Create the FastAPI application and the Pydantic response models every route retu
 every later task adds routes to an app that already exists and against a contract that is
 already fixed.
 
-**The fields of all fifteen models are stated in the spec's *Response models* section.** Take
+This is the first task in `trading-demo-backend`; nothing exists under `backend/` yet.
+
+**The fields of all fifteen models are stated in `## Response models` in
+`.spec-artifacts/specs/trading-demo-backend.md`.** Take
 every field, type and nullability from there. Do not design a shape and do not omit a field.
 
 # Outcome

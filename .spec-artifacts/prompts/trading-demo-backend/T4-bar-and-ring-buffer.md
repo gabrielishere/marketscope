@@ -17,11 +17,14 @@ in T25 has a history to append to and nothing downstream computes a session figu
 discards the oldest when it is full. `day_change_pct` and `session_volume` compute against
 tick index 390 boundaries, over hand-constructed bars rather than simulated ones.
 
-- **Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts the cap
-  and the eviction order at the cap boundary, and asserts `day_change_pct` and
-  `session_volume` against bars constructed by hand across a known tick-390 boundary, with the
-  expected values written as literals derived from the definitions in Task context rather than
-  read out of the implementation. Run before replying and paste the output.
+- **Evidenced by:** `cd backend && uv run pytest tests/test_buffer.py -v` — asserts that
+  `Bar`'s field names equal exactly the eight the Task context states, that `contributions`
+  holds one entry per factor keyed by the five factor names, and that a `Bar` cannot be
+  constructed without `contributions` or without `residual`; asserts the cap and the eviction
+  order at the cap boundary; and asserts `day_change_pct` and `session_volume` against bars
+  constructed by hand across a known tick-390 boundary, with expected values written as
+  literals derived from the Task context rather than read out of the implementation. Run
+  before replying and paste the output.
 
 # Task context
 
@@ -35,6 +38,8 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
   other.
 - **Session volume.** The sum of `volume` over every bar from session start to the latest bar.
   This is what the movers endpoint ranks *most active* on.
+- **The five factors are exactly: market, rates/duration, oil, USD, credit spread.** You need
+  them to key `contributions`, and they are the only thing you take from outside this module.
 - This task and T25 were one task. The split puts the mechanical half — a data structure with
   a capacity rule, testable against literals with no simulation running — on its own commit,
   so a failure in the engine maths leaves it standing. Write nothing here that needs the
@@ -64,6 +69,10 @@ tick index 390 boundaries, over hand-constructed bars rather than simulated ones
 - Every expected value in the test is written as a literal computed by hand from the
   definitions above. A test that calls the implementation to produce its own expected value
   cannot fail.
+- **The attribution fields must be asserted, not merely declared.** `contributions` and
+  `residual` are where O5's reconciliation is stored and are read by T25, T5 and T10, but no
+  session-window query touches either — so evidence that only exercises the cap and the
+  session queries would pass against a `Bar` that omits them entirely.
 - No price level is asserted as a simulated value; hand-constructed bars are not price
   literals in the prohibited sense, and are required here.
 - The cap is 5000 and the eviction is oldest-first. Do not make either configurable.

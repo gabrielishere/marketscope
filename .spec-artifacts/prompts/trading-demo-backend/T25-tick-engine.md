@@ -19,8 +19,8 @@ the library. A bar's stored contributions plus its residual equal its log return
 1e-6.
 
 - **Evidenced by:** `cd backend && uv run pytest tests/test_sim.py -v` — one test per outcome
-  clause: positivity over 1200 ticks for each scenario in the library, and contribution
-  reconciliation to 1e-6. The positivity test must report the number of scenarios it ran and
+  clause: that one `tick()` appends exactly one bar to every instrument, positivity over 1200
+  ticks for each scenario in the library, and contribution reconciliation to 1e-6. The positivity test must report the number of scenarios it ran and
   the minimum price it observed across all of them, so a test that silently ran zero scenarios
   is distinguishable from one that ran seven. No price literal is asserted. Run before
   replying and paste the output.

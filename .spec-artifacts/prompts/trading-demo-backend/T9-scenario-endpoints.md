@@ -18,9 +18,11 @@ its headlines and `activated_at`. Bars written before activation are unchanged b
 
 - **Evidenced by:** `cd backend && uv run pytest tests/test_scenario_routes.py -v` — snapshots
   every bar for every instrument before a POST and asserts the pre-activation slice is
-  byte-identical afterwards, reporting how many bars it compared; asserts `activated_at` is
-  set on activation and cleared on delete; and asserts an unknown scenario id returns 422. Run
-  before replying and paste the output.
+  byte-identical afterwards, reporting how many bars it compared; asserts `GET /scenarios`
+  returns every id the library holds; asserts `GET /scenario` carries the active scenario's
+  headlines, which is the half of O21 this task owns; asserts `activated_at` is set on
+  activation and cleared on delete; and asserts an unknown scenario id returns 422. Run before
+  replying and paste the output.
 
 # Task context
 
