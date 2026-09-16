@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.models import ActiveScenario, ScenarioSummary
 from app.scenarios import Scenario, ScenarioId, load_scenarios
-from app.state import AppState, get_state
+from app.state import AppState, advance_once, get_state
 
 router = APIRouter(tags=["scenario"])
 
@@ -55,9 +55,19 @@ def get_scenario(state: AppState = Depends(get_state)) -> ActiveScenario:
 def post_scenario(
     request: ActivateScenarioRequest, state: AppState = Depends(get_state)
 ) -> ActiveScenario:
-    """Make a scenario active from the next tick, stamping `activated_at`."""
+    """Make a scenario active, apply it, and report the state that results.
+
+    **The tick is the point.** `activate()` stamps the index of the next bar to be written;
+    the shock does not exist until that bar exists. Returning before writing it would report
+    success while every price is still the old one, and a client refreshing immediately —
+    which is exactly what the selector does — would fetch stale quotes and show nothing
+    happening until the next scheduled poll, up to three and a half seconds later.
+
+    So this endpoint makes the change real before it says it is done.
+    """
     scenario = load_scenarios()[request.id]
     state.engine.activate(scenario)
+    advance_once(state)
     return _active(state.scenario, state.activated_at)
 
 
@@ -69,8 +79,13 @@ def delete_scenario(state: AppState = Depends(get_state)) -> ActiveScenario:
 
     The bars written while the scenario was active stay exactly as they are — going back
     to normal is a change to what happens next, not an undo.
+
+    Ticks once before returning, for the same reason `POST` does: the unwind of the outgoing
+    shock lands in the next bar, and without writing it here the client would refresh onto
+    prices that have not moved yet.
     """
     state.engine.deactivate()
+    advance_once(state)
     return _active(state.scenario, state.activated_at)
 
 

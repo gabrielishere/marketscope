@@ -471,10 +471,11 @@ Run before replying, output pasted.
 
 **Objective:** Expose the scenario library, the active scenario and its activation, deletion
 and headlines, so the dropdown has something to drive.
-**Outcome:** `GET /scenarios` lists the library; `POST /scenario` sets the active scenario and
-stamps `activated_at`; `DELETE /scenario` returns to baseline; `GET /scenario` reports the
-active id, its headlines and `activated_at`; bars written before activation are unchanged by
-it. → serves **O6**, **O21**
+**Outcome:** `GET /scenarios` lists the library; `POST /scenario` sets the active scenario,
+stamps `activated_at` and **advances one tick before responding**, so the prices have already
+moved when it returns; `DELETE /scenario` returns to baseline the same way; `GET /scenario`
+reports the active id, its headlines and `activated_at`; bars written **before**
+`activated_at` are unchanged by any of it. → serves **O6**, **O21** — see ADR-008
 **Reads:** `backend/app/state.py`, `backend/app/scenarios.py`, `backend/app/models.py`
 **Deliverables:**
 - CREATE `backend/app/routers/scenario.py`

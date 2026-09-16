@@ -76,27 +76,74 @@ def test_active_scenario_carries_the_headlines(client, capsys) -> None:
 def test_activation_leaves_every_prior_bar_byte_identical(
     client, state, capsys
 ) -> None:
-    """O6, over every bar of every instrument rather than a sample."""
+    """O6, over every bar of every instrument rather than a sample.
+
+    The claim is about **bars before `activated_at`**, not about the whole buffer. The
+    handler ticks before responding — so that the prices have actually moved by the time a
+    client refreshes — which appends one bar at `activated_at` carrying the shock. That bar
+    is the activation working; the guarantee is that nothing *earlier* than it moved.
+    """
     before = snapshot(state)
-    bars_compared = sum(len(series) for series in before.values())
 
     response = client.post("/scenario", json={"id": a_non_baseline_id()})
     assert response.status_code == 200
+    activated_at = response.json()["activated_at"]
 
     after = snapshot(state)
-    assert after == before, "activation rewrote history"
+    prior = {
+        symbol: tuple(bar for bar in series if bar[0] < activated_at)
+        for symbol, series in after.items()
+    }
+    assert prior == before, "activation rewrote history before activated_at"
+    bars_compared = sum(len(series) for series in before.values())
 
-    activated_at = response.json()["activated_at"]
-    assert activated_at == state.tick_index, "stamped at the next bar to be written"
-
-    # And the history genuinely diverges afterwards, so the comparison above is not
-    # passing because nothing is happening.
-    state.engine.tick()
-    assert snapshot(state) != before
+    # The activation bar exists and is new, so the comparison above is not passing
+    # because nothing happened.
+    appended = {
+        symbol: [bar for bar in series if bar[0] >= activated_at]
+        for symbol, series in after.items()
+    }
+    assert all(len(bars) == 1 for bars in appended.values()), (
+        "activation should append exactly one bar per instrument"
+    )
 
     report(
         capsys,
-        f"{bars_compared} bars identical across activation at tick {activated_at}",
+        f"{bars_compared} bars before tick {activated_at} identical across activation; "
+        f"one bar appended per instrument",
+    )
+
+
+def test_activation_moves_prices_before_it_responds(client, state, capsys) -> None:
+    """The response reports a state that is already true, not one that is coming.
+
+    `activate()` stamps the *next* bar's index, so without a tick inside the handler the
+    POST would return success while every price was still the old one. A client refreshing
+    on the response — which is what the scenario selector does — would then fetch stale
+    quotes and show nothing happening until the next scheduled poll.
+    """
+    oil = next(one for one in load_scenarios() if "oil" in one)
+    before = {s: b.latest().close for s, b in state.buffers.items()}
+
+    client.post("/scenario", json={"id": oil})
+
+    after = {s: b.latest().close for s, b in state.buffers.items()}
+    moved = [s for s in before if after[s] != before[s]]
+    assert len(moved) == len(before), (
+        f"only {len(moved)} of {len(before)} instruments repriced; the handler returned "
+        "before the shock was written to a bar"
+    )
+
+    oil_exposed = [
+        s for s, i in state.instruments.items() if i.betas["oil"] > 0 and not i.is_macro_driver
+    ]
+    lifted = [s for s in oil_exposed if after[s] > before[s]]
+    assert lifted, "no oil-exposed instrument rose on activation"
+
+    report(
+        capsys,
+        f"activation repriced all {len(moved)} instruments in the response; "
+        f"{len(lifted)}/{len(oil_exposed)} oil-exposed names rose",
     )
 
 
