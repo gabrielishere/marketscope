@@ -1,0 +1,48 @@
+{
+  "seq": 8,
+  "spec": "trading-demo-backend",
+  "task": "T3",
+  "dispatched": true,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T3-scenario-library.md",
+
+  "started": "2026-09-15T23:56:41Z",
+  "ended": "2026-09-16T00:04:49Z",
+  "duration_s": 488,
+
+  "model": { "requested": "claude-opus-5", "actual": "claude-opus-5" },
+  "usage": { "turns": 37, "input": 74, "output": 43664,
+             "cache_write": 197650, "cache_read": 1678705 },
+
+  "gate": { "passed": true, "defect": null },
+
+  "deliverables": [
+    { "path": "backend/app/data/scenarios.json", "found": true, "symbols": [] },
+    { "path": "backend/app/scenarios.py", "found": true,
+      "symbols": [
+        { "name": "BASELINE_ID", "found": true, "line": 65 },
+        { "name": "FactorShock", "found": true, "line": 74 },
+        { "name": "Scenario", "found": true, "line": 130 },
+        { "name": "ScenarioId", "found": true, "line": 260 },
+        { "name": "load_scenarios", "found": true, "line": 270 }
+      ] },
+    { "path": "backend/tests/test_scenarios.py", "found": true, "symbols": [] }
+  ],
+
+  "evidence": [
+    { "command": "cd backend && uv run pytest tests/test_scenarios.py -q",
+      "exit": 0, "summary": "135 passed in 0.04s (attempt 2 of 2; attempt 1 failed one test the implementor had written)", "verbatim": null },
+    { "command": "cd backend && uv run pytest tests/ -q",
+      "exit": 0, "summary": "255 passed, 2 warnings in 0.24s (+135 from 120; no earlier test regressed)", "verbatim": null },
+    { "command": "cd backend && uv run python -c \"<load the library and check every outcome clause>\"",
+      "exit": 0, "summary": "orchestrator inspection: library size 7; enum members equal the file's ids; baseline's shock and drift zero on every factor; oil_supply_shock present; headline counts baseline 3, oil_supply_shock 3, rate_hike_surprise 3, credit_crunch 3, risk_rally 3, dollar_surge 2, recession_scare 3 — all within 2..3; every scenario's factor map keyed by the five factor keys in factor order; every non-baseline scenario names 5 factors, so all are at or above the minimum of 2; volatility multipliers 1.0/1.6/1.4/2.0/0.9/1.2/1.5", "verbatim": null }
+  ],
+
+  "status": { "run": "DONE", "deliverables": "MADE", "outcome": "PASSED" },
+  "commits": { "deliverables": "94597c3", "log": null },
+  "escalations": [
+    "One retry was used. Attempt one failed a single test I had written: my 'no factor names in headlines' check was a substring test and caught 'Factory orders fell for a third month in a row.' The evidence was wrong, not the data — I narrowed the check to whole words and added test_the_detectors_catch_a_headline_that_breaks_the_rule / test_the_detectors_let_ordinary_news_through so the detector itself is proven to discriminate.",
+    "Half-life semantics decided under the prompt's instruction to decide and state: a half-life is in ticks and a shock decays 0.5 ** (ticks_since / half_life). 'half_life': null means a persistent regime change and decay returns a flat 1.0. A missing half_life key is rejected by the loader rather than read as None, so an author who forgot the field and one who meant a permanent regime change are distinguishable. Same for shock and drift. Two scenarios exercise the persistent branch: rate_hike_surprise (rates) and dollar_surge (usd).",
+    "ScenarioId is a StrEnum built at import from the file's ids, so no .py edit registers a scenario. Members hash and compare as their id strings, so library['baseline'] and library[ScenarioId.BASELINE] both resolve — relevant to T5 and T9.",
+    "scenarios.py exports BASELINE_ID and FactorShock.decay(ticks_since_activation) for T25 and T5; load_scenarios() raises if the file holds no baseline or if the baseline moves a factor."
+  ]
+}
