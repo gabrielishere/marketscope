@@ -1,0 +1,1033 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Trading demo API",
+    "description": "Simulated market data: a fixed instrument universe advancing on a factor model, a library of world events, and a typed contract over both.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/symbols": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Get Symbols",
+        "description": "Instruments matching `q` on symbol or name, or the whole universe when it is empty.\n\nThe match is a case-insensitive substring over both fields, so `oc` finds Occidental\nby name and `XO` finds XOM by symbol, while a string in neither is absent from the\nresult rather than ranked low.",
+        "operationId": "listSymbols",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Partial symbol or name; empty returns all.",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Partial symbol or name; empty returns all."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SymbolMatch"
+                  },
+                  "title": "Response Listsymbols"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quotes": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Get Quotes",
+        "description": "One quote per requested symbol, **in request order**.\n\nThe client selects from this list positionally, so the order is the contract. An\nunknown symbol is a 404 naming it rather than a silently shorter list, which would\nmisalign every subsequent entry.",
+        "operationId": "listQuotes",
+        "parameters": [
+          {
+            "name": "symbols",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated symbols, in the order wanted.",
+              "title": "Symbols"
+            },
+            "description": "Comma-separated symbols, in the order wanted."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Quote"
+                  },
+                  "title": "Response Listquotes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/candles/{symbol}": {
+      "get": {
+        "tags": [
+          "market"
+        ],
+        "summary": "Get Candles",
+        "description": "The instrument's history aggregated into bars of the requested timeframe.\n\nBars are grouped by tick index rather than by position, so a group is the same set\nof ticks whatever the buffer happens to hold \u2014 and the open, high, low, close and\nvolume of a group are the first open, the highest high, the lowest low, the last\nclose and the summed volume of its constituents.",
+        "operationId": "listCandles",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "tf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Timeframe",
+              "description": "Chart timeframe.",
+              "default": "1m"
+            },
+            "description": "Chart timeframe."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Candle"
+                  },
+                  "title": "Response Listcandles"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolio": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Get Portfolio",
+        "description": "Every held position with its symbol, quantity and average entry, plus the totals.\n\n`unrealised_pnl` is computed here rather than stored, so it cannot go stale between\nticks: it is a function of the latest close, which moves every second.",
+        "operationId": "getPortfolio",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movers": {
+      "get": {
+        "tags": [
+          "movers"
+        ],
+        "summary": "Get Movers",
+        "description": "Gainers, losers and most active, each already in the order it renders in.",
+        "operationId": "getMovers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoversResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/macro": {
+      "get": {
+        "tags": [
+          "movers"
+        ],
+        "summary": "Get Macro",
+        "description": "The five macro drivers, one per factor, in factor order.\n\nOrdered by iterating `FACTORS` rather than by filtering the universe, so the result\nfollows the factor order whatever order the data file happens to list them in.",
+        "operationId": "listMacroDrivers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MacroDriver"
+                  },
+                  "type": "array",
+                  "title": "Response Listmacrodrivers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenarios": {
+      "get": {
+        "tags": [
+          "scenario"
+        ],
+        "summary": "Get Scenarios",
+        "description": "The library, in file order, which places the baseline first.",
+        "operationId": "listScenarios",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioSummary"
+                  },
+                  "type": "array",
+                  "title": "Response Listscenarios"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scenario": {
+      "get": {
+        "tags": [
+          "scenario"
+        ],
+        "summary": "Get Scenario",
+        "description": "The active scenario, its headlines, and the tick it was activated at.\n\n`activated_at` is null at baseline. The headlines are served from here rather than\nheld in the client, so a scenario change reaches the ticker without a redeploy.",
+        "operationId": "getActiveScenario",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScenario"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "scenario"
+        ],
+        "summary": "Post Scenario",
+        "description": "Make a scenario active from the next tick, stamping `activated_at`.",
+        "operationId": "activateScenario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScenario"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "scenario"
+        ],
+        "summary": "Delete Scenario",
+        "description": "Return to baseline, clearing `activated_at`.\n\nThe bars written while the scenario was active stay exactly as they are \u2014 going back\nto normal is a change to what happens next, not an undo.",
+        "operationId": "deactivateScenario",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveScenario"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/impact/portfolio": {
+      "get": {
+        "tags": [
+          "impact"
+        ],
+        "summary": "Get Portfolio Impact",
+        "description": "The same decomposition, one entry per holding, plus the book's total.\n\n**Declared before the symbol route.** See the module docstring.",
+        "operationId": "getPortfolioImpact",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioImpact"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/impact/{symbol}": {
+      "get": {
+        "tags": [
+          "impact"
+        ],
+        "summary": "Get Symbol Impact",
+        "description": "The move since the window opened, what drove it, and same-sector peers.",
+        "operationId": "getSymbolImpact",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SymbolImpact"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivateScenarioRequest": {
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ScenarioId",
+            "description": "An id the scenario library holds."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "ActivateScenarioRequest",
+        "description": "The body of `POST /scenario`. Typed to the enum, which is what makes a 422."
+      },
+      "ActiveScenario": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Headlines",
+            "description": "Two or three canned headlines."
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At",
+            "description": "Tick index the active scenario was activated at; null at baseline. Always present."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "headlines",
+          "activated_at"
+        ],
+        "title": "ActiveScenario",
+        "description": "`GET /scenario` \u2014 the active scenario, its headlines and its activation tick."
+      },
+      "Candle": {
+        "properties": {
+          "t": {
+            "type": "integer",
+            "title": "T",
+            "description": "Tick index of the bar's first constituent tick."
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "number",
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "Candle",
+        "description": "One aggregated bar of the chart series: `GET /candles/{symbol}?tf=`."
+      },
+      "FactorContribution": {
+        "properties": {
+          "factor": {
+            "type": "string",
+            "title": "Factor"
+          },
+          "exposure": {
+            "type": "number",
+            "title": "Exposure",
+            "description": "The instrument's beta to this factor. Expanded detail only."
+          },
+          "factor_move_pct": {
+            "type": "number",
+            "title": "Factor Move Pct",
+            "description": "The factor's own cumulative move since activation, as a percentage."
+          },
+          "contribution": {
+            "type": "number",
+            "title": "Contribution",
+            "description": "Log-space contribution since activation: beta * factor move."
+          },
+          "sentence": {
+            "type": "string",
+            "title": "Sentence",
+            "description": "One plain-language sentence, carrying no beta and no exposure value."
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor",
+          "exposure",
+          "factor_move_pct",
+          "contribution",
+          "sentence"
+        ],
+        "title": "FactorContribution",
+        "description": "One factor's share of a move since activation."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MacroDriver": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "factor": {
+            "type": "string",
+            "title": "Factor",
+            "description": "The factor this driver carries unit exposure to."
+          },
+          "last": {
+            "type": "number",
+            "title": "Last"
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "factor",
+          "last",
+          "day_change_pct"
+        ],
+        "title": "MacroDriver",
+        "description": "One tile of `GET /macro` \u2014 one instrument per factor, in factor order."
+      },
+      "Mover": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "last": {
+            "type": "number",
+            "title": "Last"
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct"
+          },
+          "session_volume": {
+            "type": "number",
+            "title": "Session Volume",
+            "description": "Sum of volume from session start to the latest bar."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "last",
+          "day_change_pct",
+          "session_volume"
+        ],
+        "title": "Mover",
+        "description": "One ranked row of `GET /movers`."
+      },
+      "MoversResponse": {
+        "properties": {
+          "gainers": {
+            "items": {
+              "$ref": "#/components/schemas/Mover"
+            },
+            "type": "array",
+            "title": "Gainers",
+            "description": "Descending by day change %."
+          },
+          "losers": {
+            "items": {
+              "$ref": "#/components/schemas/Mover"
+            },
+            "type": "array",
+            "title": "Losers",
+            "description": "Ascending by day change %."
+          },
+          "most_active": {
+            "items": {
+              "$ref": "#/components/schemas/Mover"
+            },
+            "type": "array",
+            "title": "Most Active",
+            "description": "Descending by session volume."
+          }
+        },
+        "type": "object",
+        "required": [
+          "gainers",
+          "losers",
+          "most_active"
+        ],
+        "title": "MoversResponse",
+        "description": "`GET /movers`. The API's ordering is the contract; the client re-sorts nothing."
+      },
+      "PeerImpact": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "move_pct": {
+            "type": "number",
+            "title": "Move Pct",
+            "description": "The peer's move since activation, as a percentage."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "move_pct"
+        ],
+        "title": "PeerImpact",
+        "description": "One same-sector peer's move since activation.\n\nA field of `SymbolImpact` rather than a second request: the impact panel ranks\nsame-sector instruments by impact, and without it that component would issue one\n`/impact/{symbol}` call per peer."
+      },
+      "PortfolioImpact": {
+        "properties": {
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/SymbolImpact"
+            },
+            "type": "array",
+            "title": "Holdings",
+            "description": "One breakdown per held position."
+          },
+          "total_impact": {
+            "type": "number",
+            "title": "Total Impact",
+            "description": "Total impact on the portfolio since activation, in currency."
+          }
+        },
+        "type": "object",
+        "required": [
+          "holdings",
+          "total_impact"
+        ],
+        "title": "PortfolioImpact",
+        "description": "`GET /impact/portfolio` \u2014 the same decomposition, by holding.\n\nNever resolved as an instrument lookup for a symbol named `portfolio`."
+      },
+      "PortfolioResponse": {
+        "properties": {
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "type": "array",
+            "title": "Positions"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PortfolioTotals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positions",
+          "totals"
+        ],
+        "title": "PortfolioResponse",
+        "description": "`GET /portfolio`."
+      },
+      "PortfolioTotals": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "description": "Total portfolio value."
+          },
+          "cash": {
+            "type": "number",
+            "title": "Cash",
+            "description": "Uninvested cash balance."
+          },
+          "total_return": {
+            "type": "number",
+            "title": "Total Return",
+            "description": "Total return in currency."
+          },
+          "total_return_pct": {
+            "type": "number",
+            "title": "Total Return Pct",
+            "description": "Total return as a percentage."
+          },
+          "day_change": {
+            "type": "number",
+            "title": "Day Change",
+            "description": "Today's change in currency."
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct",
+            "description": "Today's change as a percentage, per the day change % definition."
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "cash",
+          "total_return",
+          "total_return_pct",
+          "day_change",
+          "day_change_pct"
+        ],
+        "title": "PortfolioTotals",
+        "description": "One set of figures \u2014 there is no FX rate, so there is nothing to sum across."
+      },
+      "Position": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity",
+            "description": "Position size is a float, never an integer."
+          },
+          "avg_entry": {
+            "type": "number",
+            "title": "Avg Entry",
+            "description": "Average entry price."
+          },
+          "unrealised_pnl": {
+            "type": "number",
+            "title": "Unrealised Pnl",
+            "description": "Unrealised profit and loss in the single currency."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "quantity",
+          "avg_entry",
+          "unrealised_pnl"
+        ],
+        "title": "Position",
+        "description": "One paper holding: an entry of `GET /portfolio`."
+      },
+      "Quote": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "description": "The instrument's ticker symbol."
+          },
+          "last": {
+            "type": "number",
+            "title": "Last",
+            "description": "Latest close from the ring buffer."
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct",
+            "description": "(close_latest / close_at_session_start - 1) * 100."
+          },
+          "sparkline": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Sparkline",
+            "description": "Recent closes, oldest first and the latest last, for the row sparkline. Prices, not returns; drawn on its own scale."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "last",
+          "day_change_pct",
+          "sparkline"
+        ],
+        "title": "Quote",
+        "description": "One entry of the polled quote set: `GET /quotes?symbols=`."
+      },
+      "ScenarioId": {
+        "type": "string",
+        "enum": [
+          "baseline",
+          "oil_supply_shock",
+          "rate_hike_surprise",
+          "credit_crunch",
+          "risk_rally",
+          "dollar_surge",
+          "recession_scare"
+        ],
+        "title": "ScenarioId",
+        "description": "The ids in data/scenarios.json, generated from the file at import."
+      },
+      "ScenarioSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "The scenario id, matching the ScenarioId enum's values."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "ScenarioSummary",
+        "description": "One entry of the library: `GET /scenarios`."
+      },
+      "SymbolImpact": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "move_pct": {
+            "type": "number",
+            "title": "Move Pct",
+            "description": "Headline move since activation: (close_now / close_at_activation - 1) * 100."
+          },
+          "log_return": {
+            "type": "number",
+            "title": "Log Return",
+            "description": "log(close_now / close_at_activation). The contributions plus the residual reconcile with this to within 1e-6."
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/FactorContribution"
+            },
+            "type": "array",
+            "title": "Contributions",
+            "description": "Ordered by descending absolute contribution."
+          },
+          "residual": {
+            "type": "number",
+            "title": "Residual",
+            "description": "The idiosyncratic term, in log space."
+          },
+          "position_impact": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Impact",
+            "description": "Impact on the holding in currency terms; null when the symbol is not held. Always present."
+          },
+          "peers": {
+            "items": {
+              "$ref": "#/components/schemas/PeerImpact"
+            },
+            "type": "array",
+            "title": "Peers",
+            "description": "Same-sector peers, ranked by descending absolute move_pct. A field rather than a second request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "move_pct",
+          "log_return",
+          "contributions",
+          "residual",
+          "position_impact",
+          "peers"
+        ],
+        "title": "SymbolImpact",
+        "description": "`GET /impact/{symbol}` \u2014 the move since activation and what drove it."
+      },
+      "SymbolMatch": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "Constant across the universe; the UI has a symbol to render."
+          },
+          "decimals": {
+            "type": "integer",
+            "title": "Decimals",
+            "description": "Fixed decimal places for this instrument's price, never inferred."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "sector",
+          "currency",
+          "decimals"
+        ],
+        "title": "SymbolMatch",
+        "description": "One entry of the symbol list: `GET /symbols?q=`.\n\nWith `q` omitted or empty this carries the static metadata the markets table\nloads once at load rather than on every poll."
+      },
+      "Timeframe": {
+        "type": "string",
+        "enum": [
+          "1m",
+          "5m",
+          "15m",
+          "session"
+        ],
+        "title": "Timeframe",
+        "description": "The four chart timeframes. Declared as a type so an unknown one is a 422."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

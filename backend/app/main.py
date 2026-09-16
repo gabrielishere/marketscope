@@ -10,7 +10,7 @@ The task's body is that one call and nothing else: no logging, no metrics, no
 conditional work. Everything a tick does lives in `app.state.advance_once`, where a
 test can call it directly, so the loop carries no behaviour of its own.
 
-This module declares no route. Routers arrive in T6-T10.
+Routers are registered at the bottom, each owning its own slice of the surface.
 """
 
 import asyncio
@@ -19,7 +19,9 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 
+from app.routers import impact, market, movers, portfolio, scenario
 from app.state import TICK_SECONDS, AppState, advance_once, get_state
 
 #: The Angular dev server's origins. Cross-origin in dev, which is why CORS is here.
@@ -54,8 +56,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await task
 
 
+def generate_unique_id(route: APIRoute) -> str:
+    """The operation id for a route: the one its decorator declares.
+
+    FastAPI's default composes name, path and method into ids like
+    `get_quotes_quotes_get`, and the generator turns those straight into the client's
+    TypeScript method names. Every route here declares an explicit `operation_id`, so
+    this exists to make a missing one **fail loudly** rather than fall back to a default
+    that would reach the frontend as a method name nobody chose.
+
+    Derived from the route, never from a counter or from declaration order, so the ids
+    are stable across runs and adding a route does not renumber the others.
+    """
+    if not route.operation_id:
+        raise ValueError(
+            f"{route.path} declares no operation_id. Every route declares one, because "
+            "the generated client takes its method names from them."
+        )
+    return route.operation_id
+
+
 app = FastAPI(
     lifespan=lifespan,
+    generate_unique_id_function=generate_unique_id,
     title="Trading demo API",
     description=(
         "Simulated market data: a fixed instrument universe advancing on a factor "
@@ -71,3 +94,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(market.router)
+app.include_router(portfolio.router)
+app.include_router(movers.router)
+app.include_router(scenario.router)
+app.include_router(impact.router)
+
+#: Pinned unconditionally. FastAPI emits 3.1 by default and `ng-openapi-gen` may reject
+#: it — and the task that would discover the rejection is in the frontend spec, which
+#: cannot fix it here. So this is pinned rather than tried.
+app.openapi_version = "3.0.2"

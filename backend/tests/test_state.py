@@ -19,8 +19,10 @@ and a comparison of two full ones produce the same green line.
 """
 
 import asyncio
+import time
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app import main
 from app import state as state_module
@@ -318,3 +320,44 @@ def test_the_lifespans_background_task_advances_the_state(
         capsys,
         f"lifespan run: {len(before)} instruments advanced by {advanced} bars each",
     )
+
+
+def test_the_application_runs_the_clock(capsys, monkeypatch) -> None:
+    """O1's other half: that *the app* advances the market, not just that a loop would.
+
+    Asserted by entering the application's own lifespan through `TestClient` and
+    watching the bars grow. A static check cannot do this job: FastAPI installs
+    `_DefaultLifespan` when no `lifespan=` is passed, which is truthy, and once routers
+    are included **both** the attached and the unattached case become merged wrapper
+    functions — so neither truthiness, nor identity against `lifespan`, nor an
+    `isinstance` against `_DefaultLifespan` tells the two apart.
+
+    What does tell them apart is whether the clock runs. Drop `lifespan=` from the
+    `FastAPI(...)` call and this test fails; nothing else in the suite would.
+    """
+    monkeypatch.setattr(main, "TICK_SECONDS", 0.01)
+    state = build_state()
+    monkeypatch.setattr(state_module, "_state", state)
+
+    before = {symbol: len(buffer) for symbol, buffer in state.buffers.items()}
+    with TestClient(main.app):
+        time.sleep(0.2)
+    after = {symbol: len(buffer) for symbol, buffer in state.buffers.items()}
+
+    advances = {after[symbol] - before[symbol] for symbol in before}
+    assert len(advances) == 1, "instruments advanced by differing amounts"
+    (advanced,) = advances
+    assert advanced >= 1, (
+        "the application served a request window without advancing the market; "
+        "lifespan is not attached to the app"
+    )
+
+    report(
+        capsys,
+        f"the app's own lifespan advanced {len(before)} instruments by {advanced} bars",
+    )
+
+
+def test_tick_seconds_is_one_second() -> None:
+    """One tick is one second of wall time, so the loop's interval is 1."""
+    assert main.TICK_SECONDS == 1
