@@ -8,6 +8,8 @@ Pick *Oil supply shock* and energy producers climb while airlines fall, the move
 repopulate, the markets table reorders its sectors, a marker appears on the chart at the
 moment of activation, and a panel explains the move in plain English.
 
+**Running instance: <https://marketscope-v2em.onrender.com>**
+
 ![The dashboard under an oil supply shock](docs/screenshots/01-dashboard.png)
 
 *The dashboard mid-scenario. Energy names climb, airlines fall, the factor strip shows oil
@@ -91,6 +93,8 @@ else, because the collapsed view is for someone who does not know what a beta is
 ---
 
 ## Deployment
+
+**Live: <https://marketscope-v2em.onrender.com>**
 
 - One service. FastAPI serves the API and the built Angular app on the same origin, so no CORS in production.
 - Docker, two stages: Node builds the frontend, Python runs it. Root `Dockerfile`, no config needed.
