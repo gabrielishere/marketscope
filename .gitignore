@@ -3,13 +3,13 @@
 
 .DS_Store
 
-# Python — backend/
+# Python
 **/__pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
 
-# Node — frontend/
+# Node
 node_modules/
 .angular/
 dist/

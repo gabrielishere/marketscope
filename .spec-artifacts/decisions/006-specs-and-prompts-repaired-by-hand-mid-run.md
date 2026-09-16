@@ -35,7 +35,7 @@ the commit message.
 ## Alternatives
 
 - **Re-author the affected artefacts from the original input** — the specs were derived from
-  `app-features.md` through the method's three reading passes. Re-running those for a
+  `input/app-features.md` through the method's three reading passes. Re-running those for a
   single-clause defect discards the intervening decisions, several of which are the ADRs in
   this directory, and risks re-introducing what was already fixed.
 - **Restart the run from T1 after each repair** — clean, and it throws away every passing
