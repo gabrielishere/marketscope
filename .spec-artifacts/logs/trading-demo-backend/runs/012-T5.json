@@ -1,0 +1,29 @@
+{
+  "seq": 12,
+  "spec": "trading-demo-backend",
+  "task": "T5",
+  "dispatched": false,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T5-state-backfill-and-tick-loop.md",
+
+  "started": "2026-09-16T00:20:15Z",
+  "ended": "2026-09-16T00:21:40Z",
+  "duration_s": 85,
+
+  "model": { "requested": "claude-opus-5", "actual": null },
+  "usage": { "turns": null, "input": null, "output": null,
+             "cache_write": null, "cache_read": null },
+
+  "gate": {
+    "passed": false,
+    "defect": "Gate question 3 — the named evidence cannot fail. The new clause asks the suite to assert 'that app.router.lifespan_context is set'. In FastAPI that attribute is always set: an app constructed with no lifespan= gets fastapi.routing._DefaultLifespan, which is a truthy object. Verified in this workspace on the installed FastAPI: FastAPI() gives router.lifespan_context = <fastapi.routing._DefaultLifespan object>, bool() is True; FastAPI(lifespan=ls) gives the function itself. A truthiness or is-not-None assertion therefore passes identically whether or not lifespan= was passed, which is the exact edit this clause was added to catch. The discriminating assertion is identity — app.router.lifespan_context is lifespan — or exclusion of _DefaultLifespan; the prompt's parenthetical 'rather than merely defined' points that way but the literal instruction 'is set' does not require it, and an implementor following the words gets a test that cannot fail. The spec's T5 block carries the same wording, so the fix lands in both. The TICK_SECONDS == 1 half of the same clause is sound and does discriminate."
+  },
+
+  "deliverables": [],
+  "evidence": [],
+
+  "status": { "run": "REFUSED", "deliverables": "—", "outcome": "—" },
+  "commits": { "deliverables": null, "log": null },
+  "escalations": [
+    "T5 re-run refused before dispatch: the assertion added to close O1's other half is satisfied by a FastAPI app that never had a lifespan attached, because lifespan_context defaults to _DefaultLifespan rather than to None."
+  ]
+}
