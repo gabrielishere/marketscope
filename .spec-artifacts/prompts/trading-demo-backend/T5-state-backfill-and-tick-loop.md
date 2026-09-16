@@ -22,11 +22,14 @@ loop's behaviour is the function's.
   depth is exactly 780 for every instrument and that the earliest bar held is at tick index 0, that two `build_state()` calls compare equal bar
   for bar and position for position, that the active scenario is baseline, and that one
   `advance_once` call raises every instrument's bar count by exactly one; and asserts that
-  `app.router.lifespan_context` is set — that `lifespan` is attached to the FastAPI instance
-  rather than merely defined — and that `TICK_SECONDS` is 1. That last pair is O1's other
-  half: "the loop's behaviour is the function's" covers what the loop does, not whether
-  anything calls it, so without it an edit dropping `lifespan=` leaves the suite green and the
-  app static. The comparison test must report how many bars and how many positions it
+  `app.router.lifespan_context` **is the `lifespan` function itself**, and that
+  `TICK_SECONDS` is 1. Assert identity, not truthiness: FastAPI installs
+  `fastapi.routing._DefaultLifespan` when no `lifespan=` is passed, so `assert
+  app.router.lifespan_context` and `is not None` both pass on an app that never had one
+  attached — which is the precise edit this assertion exists to catch. Confirm that for
+  yourself by constructing a bare `FastAPI()` and comparing before you trust the test. This is
+  O1's other half: "the loop's behaviour is the function's" covers what the loop does, not
+  whether anything calls it. The comparison test must report how many bars and how many positions it
   compared, so a test comparing two empty
   states is distinguishable from one comparing two full ones. Run before replying and paste
   the output.

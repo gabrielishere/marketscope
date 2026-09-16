@@ -389,11 +389,12 @@ FastAPI instance with `TICK_SECONDS` equal to 1. → serves **O1**
 depth is 780 and the earliest bar held is at tick index 0, that two `build_state()` calls
 compare equal bar for bar and position for
 position, that the active scenario is baseline, and that one `advance_once` call raises every
-instrument's bar count by exactly one, and that `app.router.lifespan_context` is set and
-`TICK_SECONDS` is 1. That last assertion is O1's other half: "the loop's behaviour is the
-function's" covers what the loop does, not whether anything calls it, and an edit dropping
-`lifespan=` would otherwise leave the suite green and the app static. Run before replying,
-output pasted.
+instrument's bar count by exactly one, and that `app.router.lifespan_context` **is the
+`lifespan` function itself** while `TICK_SECONDS` is 1. The identity is the point: FastAPI
+installs `_DefaultLifespan` when no `lifespan=` is passed, so a truthiness or `is not None`
+check passes on an app that never had one attached — which is the exact edit this assertion
+exists to catch. It is O1's other half: "the loop's behaviour is the function's" covers what
+the loop does, not whether anything calls it. Run before replying, output pasted.
 
 ## T6 — Market endpoints
 
