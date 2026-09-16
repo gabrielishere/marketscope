@@ -21,8 +21,13 @@ loop's behaviour is the function's.
 - **Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
   depth is exactly 780 for every instrument and that the earliest bar held is at tick index 0, that two `build_state()` calls compare equal bar
   for bar and position for position, that the active scenario is baseline, and that one
-  `advance_once` call raises every instrument's bar count by exactly one. The comparison test
-  must report how many bars and how many positions it compared, so a test comparing two empty
+  `advance_once` call raises every instrument's bar count by exactly one; and asserts that
+  `app.router.lifespan_context` is set — that `lifespan` is attached to the FastAPI instance
+  rather than merely defined — and that `TICK_SECONDS` is 1. That last pair is O1's other
+  half: "the loop's behaviour is the function's" covers what the loop does, not whether
+  anything calls it, so without it an edit dropping `lifespan=` leaves the suite green and the
+  app static. The comparison test must report how many bars and how many positions it
+  compared, so a test comparing two empty
   states is distinguishable from one comparing two full ones. Run before replying and paste
   the output.
 
@@ -49,6 +54,8 @@ loop's behaviour is the function's.
 # Deliverables
 
 - **CREATE** `backend/app/state.py`
+- **Function(s):** `get_state() -> AppState` — the single instance every router from T6 on
+  reads through; `Holding` for a starting position; `TICK_SECONDS` for the loop's interval
 - **UPDATE** `backend/app/main.py` — the lifespan and its background task
 - **Function(s):** `build_state() -> AppState`, `advance_once(state: AppState) -> None`,
   `lifespan(app)`
@@ -62,7 +69,7 @@ loop's behaviour is the function's.
 3. ADD class `AppState` in `backend/app/state.py`
 4. ADD function `build_state() -> AppState` in `backend/app/state.py`
 5. ADD function `advance_once(state: AppState) -> None` in `backend/app/state.py`
-6. UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`
+6. UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`, attached to the FastAPI instance
 7. CREATE `backend/tests/test_state.py`
 
 # Constraints

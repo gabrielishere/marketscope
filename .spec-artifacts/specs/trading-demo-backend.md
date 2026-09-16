@@ -368,9 +368,10 @@ literal is asserted, per Constraints. Run before replying, output pasted.
 process; backfill history at startup from a fixed seed; and advance the engine once per
 second for the life of the process.
 **Outcome:** `build_state()` leaves 780 bars per instrument, **the first at tick index 0**,
-and a fixed non-empty portfolio identical across two calls; the active scenario is baseline; and one call to `advance_once`
+and a fixed non-empty portfolio identical across two calls; the active scenario is baseline; one call to `advance_once`
 appends exactly one bar to every instrument — this being the same function the background
-loop calls, so the loop's behaviour is the function's. → serves **O1**
+loop calls, so the loop's behaviour is the function's; and `lifespan` is **attached** to the
+FastAPI instance with `TICK_SECONDS` equal to 1. → serves **O1**
 **Reads:** `backend/app/sim.py`, `backend/app/buffer.py`, `backend/app/main.py`
 **Deliverables:**
 - CREATE `backend/app/state.py`
@@ -378,14 +379,21 @@ loop calls, so the loop's behaviour is the function's. → serves **O1**
 - ADD class `AppState` in `backend/app/state.py`
 - ADD function `build_state() -> AppState` in `backend/app/state.py`
 - ADD function `advance_once(state: AppState) -> None` in `backend/app/state.py`
-- UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`, whose background task calls `advance_once` once per second and calls nothing else
+- ADD var `TICK_SECONDS` in `backend/app/state.py` — the loop's interval, 1
+- ADD type `Holding` in `backend/app/state.py` — a starting position's symbol, quantity and average entry
+- ADD function `get_state() -> AppState` in `backend/app/state.py` — the single instance every router from T6 on reads through
+- UPDATE `backend/app/main.py` — ADD function `lifespan(app)` in `backend/app/main.py`, whose background task calls `advance_once` once per `TICK_SECONDS` and calls nothing else, and **attach it to the FastAPI instance**
 - CREATE `backend/tests/test_state.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_state.py -v` — asserts the backfill
 depth is 780 and the earliest bar held is at tick index 0, that two `build_state()` calls
 compare equal bar for bar and position for
 position, that the active scenario is baseline, and that one `advance_once` call raises every
-instrument's bar count by exactly one. Run before replying, output pasted.
+instrument's bar count by exactly one, and that `app.router.lifespan_context` is set and
+`TICK_SECONDS` is 1. That last assertion is O1's other half: "the loop's behaviour is the
+function's" covers what the loop does, not whether anything calls it, and an edit dropping
+`lifespan=` would otherwise leave the suite green and the app static. Run before replying,
+output pasted.
 
 ## T6 — Market endpoints
 
@@ -408,8 +416,11 @@ unknown `tf` is rejected rather than silently defaulted. → serves **O7**
 - CREATE `backend/tests/test_market.py`
 
 **Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
-match excludes a known non-match, that quote order follows request order, that the returned
-day change equals `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a
+match includes a named partial-symbol and a named partial-name match and excludes a known
+non-match, that `GET /symbols` with `q` omitted and with `q` empty each return the whole
+universe with every entry's `name`, `sector`, `currency` and `decimals` populated, that quote
+order follows request order, that the returned day change equals
+`RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a
 bar count consistent with its aggregation factor, that every quote carries a non-empty
 `sparkline` of floats ordered oldest first, and that an unknown `tf` returns 422. Run before
 replying, output pasted.

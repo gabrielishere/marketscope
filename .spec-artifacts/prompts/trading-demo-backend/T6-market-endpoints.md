@@ -20,13 +20,20 @@ aggregates the buffer into 1m, 5m, 15m and session bars, and an unknown `tf` is 
 rather than silently defaulted.
 
 - **Evidenced by:** `cd backend && uv run pytest tests/test_market.py -v` — asserts the fuzzy
-  match excludes a named known non-match, that quote order follows request order for a
-  deliberately unsorted request, that the returned day change equals
+  match both includes a named instrument matched on a partial symbol and a second matched on a
+  partial name, and excludes a named known non-match; that `GET /symbols` with `q` omitted and
+  with `q` empty each return the whole universe, every entry carrying a non-empty `name`,
+  `sector` and `currency` and an integer `decimals`, reporting the count returned; that quote
+  order follows request order for a deliberately unsorted request, that the returned day change equals
   `RingBuffer.day_change_pct` for the same symbol, that each timeframe returns a bar count
   consistent with its aggregation factor, that every quote carries a non-empty `sparkline` of
-  floats whose last element is the latest close, and that an unknown `tf` returns 422. Nothing
-  else in this suite reads the sparkline, so without that assertion a `Quote` returning an
-  empty list passes. Run before replying and paste the output.
+  floats whose last element is the latest close, and that an unknown `tf` returns 422.
+
+  Three of those exist because nothing else in this suite reads what they cover: without the
+  sparkline assertion a `Quote` returning an empty list passes; without the empty-`q`
+  assertion `GET /symbols` returning nothing, or entries missing `sector`, `currency` or
+  `decimals`, passes; and asserting only the exclusion half of the match would be satisfied by
+  a matcher that returns nothing for every query. Run before replying and paste the output.
 
 # Task context
 
@@ -66,8 +73,10 @@ rather than silently defaulted.
 - Read `day change %` through `RingBuffer.day_change_pct`. Do not recompute it in the router.
 - An unknown `tf` returns 422. Do not fall back to a default timeframe.
 - No price-level literal is asserted in any test.
-- If the fuzzy match cannot both include a partial symbol and exclude a known non-match with
-  one rule, STOP and report the conflict rather than loosening the test.
+- The match is asserted in both directions — a named inclusion and a named exclusion. A rule
+  that returns nothing satisfies exclusion alone.
+- If the match cannot both include a partial symbol and exclude a known non-match with one
+  rule, STOP and report the conflict rather than loosening the test.
 
 # Response format
 
