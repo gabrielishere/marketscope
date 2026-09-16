@@ -8,6 +8,11 @@ Pick *Oil supply shock* and energy producers climb while airlines fall, the move
 repopulate, the markets table reorders its sectors, a marker appears on the chart at the
 moment of activation, and a panel explains the move in plain English.
 
+![The dashboard under an oil supply shock](docs/screenshots/01-dashboard.png)
+
+*The dashboard mid-scenario. Energy names climb, airlines fall, the factor strip shows oil
+carrying the move, and the chart marks the tick the event was activated.*
+
 ---
 
 ## Running it
@@ -66,6 +71,22 @@ The universe is built so scenarios disagree **within** a sector as well as betwe
 under an oil spike a refiner gains while an airline suffers. Scattered through a flat list
 that is invisible; grouped by sector with energy rising above industrials, it needs no
 explanation.
+
+---
+
+## What it looks like
+
+**The markets table** — every instrument grouped by sector, groups ordered by their
+aggregate move. Under an oil shock energy rises to the top and the fuel-consuming sectors
+sink, which is the whole reason this surface exists.
+
+![The markets table grouped by sector](docs/screenshots/02-markets.png)
+
+**The impact panel** — plain language first, at most three bars, and no exposure value
+anywhere until the disclosure is opened. The betas live in the expanded table and nowhere
+else, because the collapsed view is for someone who does not know what a beta is.
+
+![The impact panel with its attribution expanded](docs/screenshots/03-impact-attribution.png)
 
 ---
 
