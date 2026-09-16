@@ -1,0 +1,129 @@
+{
+  "scenarios": [
+    {
+      "id": "baseline",
+      "name": "Baseline",
+      "description": "No event in progress. Prices drift on their own volatility alone.",
+      "vol_multiplier": 1.0,
+      "headlines": [
+        "Trading opens quietly with no major surprises for investors.",
+        "Economists expect steady growth through the rest of the year.",
+        "Company earnings are broadly in line with what analysts forecast."
+      ],
+      "factors": {
+        "market": {"shock": 0.0, "drift": 0.0, "half_life": null},
+        "rates": {"shock": 0.0, "drift": 0.0, "half_life": null},
+        "oil": {"shock": 0.0, "drift": 0.0, "half_life": null},
+        "usd": {"shock": 0.0, "drift": 0.0, "half_life": null},
+        "credit": {"shock": 0.0, "drift": 0.0, "half_life": null}
+      }
+    },
+    {
+      "id": "oil_supply_shock",
+      "name": "Oil supply shock",
+      "description": "A pipeline outage cuts crude supply: energy producers rally, airlines and hauliers are hit.",
+      "vol_multiplier": 1.6,
+      "headlines": [
+        "A pipeline outage abroad has cut global crude supply overnight.",
+        "Petrol prices jump at the pump and airlines warn of higher fuel bills.",
+        "Energy producers rally while travel companies fall back."
+      ],
+      "factors": {
+        "market": {"shock": -0.010, "drift": -0.00004, "half_life": 240.0},
+        "rates": {"shock": 0.004, "drift": 0.00002, "half_life": 240.0},
+        "oil": {"shock": 0.070, "drift": 0.00012, "half_life": 480.0},
+        "usd": {"shock": 0.006, "drift": 0.00002, "half_life": 240.0},
+        "credit": {"shock": 0.008, "drift": 0.00003, "half_life": 240.0}
+      }
+    },
+    {
+      "id": "rate_hike_surprise",
+      "name": "Surprise rate hike",
+      "description": "The central bank tightens harder than expected. A persistent repricing, not a passing scare.",
+      "vol_multiplier": 1.4,
+      "headlines": [
+        "The central bank raised borrowing costs by more than anyone expected.",
+        "Mortgage lenders move quickly to pass the increase on to customers.",
+        "Shares in banks climb while house builders slide."
+      ],
+      "factors": {
+        "market": {"shock": -0.012, "drift": -0.00005, "half_life": 300.0},
+        "rates": {"shock": 0.035, "drift": 0.00010, "half_life": null},
+        "oil": {"shock": -0.004, "drift": -0.00002, "half_life": 300.0},
+        "usd": {"shock": 0.012, "drift": 0.00004, "half_life": 300.0},
+        "credit": {"shock": 0.006, "drift": 0.00002, "half_life": 300.0}
+      }
+    },
+    {
+      "id": "credit_crunch",
+      "name": "Credit crunch",
+      "description": "A large borrower fails to refinance and lending seizes up. The widest spreads decay slowest.",
+      "vol_multiplier": 2.0,
+      "headlines": [
+        "A large lender has failed to refinance its short-term debt.",
+        "Banks are charging each other far more to borrow overnight.",
+        "Investors are moving money into the safest assets they can find."
+      ],
+      "factors": {
+        "market": {"shock": -0.025, "drift": -0.00010, "half_life": 360.0},
+        "rates": {"shock": -0.010, "drift": -0.00004, "half_life": 360.0},
+        "oil": {"shock": -0.008, "drift": -0.00003, "half_life": 360.0},
+        "usd": {"shock": 0.010, "drift": 0.00004, "half_life": 360.0},
+        "credit": {"shock": 0.045, "drift": 0.00014, "half_life": 720.0}
+      }
+    },
+    {
+      "id": "risk_rally",
+      "name": "Risk-on rally",
+      "description": "Inflation cools and buyers return. A broad, slowly fading advance led by growth names.",
+      "vol_multiplier": 0.9,
+      "headlines": [
+        "Inflation cooled faster than forecast for a third straight month.",
+        "Investors are buying shares again after a long cautious spell.",
+        "Growth companies lead the advance as confidence returns."
+      ],
+      "factors": {
+        "market": {"shock": 0.018, "drift": 0.00008, "half_life": 600.0},
+        "rates": {"shock": -0.006, "drift": -0.00002, "half_life": 600.0},
+        "oil": {"shock": 0.004, "drift": 0.00001, "half_life": 600.0},
+        "usd": {"shock": -0.005, "drift": -0.00002, "half_life": 600.0},
+        "credit": {"shock": -0.012, "drift": -0.00005, "half_life": 600.0}
+      }
+    },
+    {
+      "id": "dollar_surge",
+      "name": "Dollar surge",
+      "description": "The home currency reprices to a new, persistent level. Exporters and importers part company.",
+      "vol_multiplier": 1.2,
+      "headlines": [
+        "The American currency has climbed to its strongest level in years.",
+        "Exporters warn that overseas sales will be worth less at home."
+      ],
+      "factors": {
+        "market": {"shock": -0.006, "drift": -0.00002, "half_life": 420.0},
+        "rates": {"shock": 0.008, "drift": 0.00003, "half_life": 420.0},
+        "oil": {"shock": -0.010, "drift": -0.00004, "half_life": 420.0},
+        "usd": {"shock": 0.030, "drift": 0.00010, "half_life": null},
+        "credit": {"shock": 0.004, "drift": 0.00002, "half_life": 420.0}
+      }
+    },
+    {
+      "id": "recession_scare",
+      "name": "Recession scare",
+      "description": "Growth data disappoints across the board. Defensive names hold up, cyclicals do not.",
+      "vol_multiplier": 1.5,
+      "headlines": [
+        "Factory orders fell for a third month in a row.",
+        "Job vacancies are drying up across several large industries.",
+        "Investors are cutting back on riskier holdings and buying government bonds."
+      ],
+      "factors": {
+        "market": {"shock": -0.020, "drift": -0.00009, "half_life": 480.0},
+        "rates": {"shock": -0.018, "drift": -0.00006, "half_life": 480.0},
+        "oil": {"shock": -0.015, "drift": -0.00006, "half_life": 480.0},
+        "usd": {"shock": 0.006, "drift": 0.00002, "half_life": 480.0},
+        "credit": {"shock": 0.022, "drift": 0.00008, "half_life": 480.0}
+      }
+    }
+  ]
+}
