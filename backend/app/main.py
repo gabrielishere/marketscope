@@ -16,10 +16,14 @@ Routers are registered at the bottom, each owning its own slice of the surface.
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.routing import APIRoute
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import impact, market, movers, portfolio, scenario
 from app.state import TICK_SECONDS, AppState, advance_once, get_state
@@ -105,3 +109,41 @@ app.include_router(impact.router)
 #: it — and the task that would discover the rejection is in the frontend spec, which
 #: cannot fix it here. So this is pinned rather than tried.
 app.openapi_version = "3.0.2"
+
+
+# ── The built frontend ───────────────────────────────────────────────────────
+#
+# Deployed, this process serves the application *and* its API on one origin. That is what
+# removes CORS from production, leaves one URL to share and one service to keep awake.
+#
+# The mount is last on purpose: it claims `/`, so anything registered after it would never
+# be reached. Every router above is already declared, so no API path can be shadowed.
+#
+# `STATIC_DIR` is absent in development — `ng serve` is serving the frontend then — so the
+# mount is conditional and the API runs exactly as before when the directory is not there.
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+class SPAStaticFiles(StaticFiles):
+    """Static files, with unmatched paths falling back to `index.html`.
+
+    The client routes `/markets` itself. Without this, a reload or a shared deep link asks
+    the server for a file that does not exist and gets a 404 — the application would work
+    only if every visitor entered through `/`.
+
+    A missing *API* path is unaffected: those are matched by the routers above and never
+    reach this handler.
+    """
+
+    async def get_response(self, path: str, scope):  # type: ignore[no-untyped-def]
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404:
+                return FileResponse(self.directory / "index.html")  # type: ignore[arg-type]
+            raise
+
+
+if STATIC_DIR.is_dir():
+    app.mount("/", SPAStaticFiles(directory=STATIC_DIR, html=True), name="frontend")

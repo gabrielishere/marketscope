@@ -24,7 +24,7 @@ Two links for the reviewer: the repository for the code, one URL for the running
 
 ## Steps
 
-### 1. Serve the frontend from FastAPI — *not yet done*
+### 1. Serve the frontend from FastAPI — **done**
 
 Mount the built Angular output as static files, after the routers so no API path is
 shadowed, with an SPA fallback so a deep link to `/markets` returns `index.html` rather than
@@ -35,12 +35,12 @@ a 404.
 app.mount("/", SPAStaticFiles(directory="static", html=True), name="app")
 ```
 
-**One change is required in the frontend for this to work.** `app.config.ts` currently
-hard-codes `rootUrl = 'http://localhost:8000'`. Served from the same origin it must be the
-empty string, so requests go to the host serving the page. Keep the localhost value behind a
-build configuration so `ng serve` against a local API still works.
+The frontend's base URL now resolves at runtime: empty when served from any origin but the
+dev server's port 4200, `http://localhost:8000` when `ng serve` is running. Decided by
+looking at the port rather than by a build flag, because a build configuration is a second
+thing to get right and this has one correct answer in each case.
 
-### 2. Dockerfile — *not yet done*
+### 2. Dockerfile — **done**
 
 Two stages:
 
@@ -64,11 +64,17 @@ home.
 
 ## Effort
 
-| Step | Whose | Rough |
+| Step | Whose | State |
 |---|---|---|
-| 1 — static mount and base URL | mine | 20 lines |
-| 2 — Dockerfile | mine | one file |
+| 1 — static mount and base URL | mine | done, verified locally |
+| 2 — Dockerfile | mine | written, **not built** — no Docker on the authoring machine |
 | 3 — push and connect | yours | mostly clicking |
+
+**Step 2 is unverified and that matters.** The image has never been built, so the first real
+test of it is Render's build. Reviewing it cold did catch one defect before it shipped —
+`uvicorn` was a dev dependency while the image installs with `--no-dev`, so the container
+would have built cleanly and then failed to start. It is a runtime dependency now. Others of
+that shape may remain.
 
 ---
 

@@ -20,3 +20,4 @@ dist/
 #   backend/openapi.json        T11 writes it, T12 generates the client from it
 #   frontend/src/app/api/       committed so the frontend builds without the backend
 #   .spec-artifacts/            specs, prompts, decisions and run records are the record
+backend/static/
