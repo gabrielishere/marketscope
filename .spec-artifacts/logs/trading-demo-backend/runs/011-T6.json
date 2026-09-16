@@ -1,0 +1,29 @@
+{
+  "seq": 11,
+  "spec": "trading-demo-backend",
+  "task": "T6",
+  "dispatched": false,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T6-market-endpoints.md",
+
+  "started": "2026-09-16T00:17:30Z",
+  "ended": "2026-09-16T00:18:21Z",
+  "duration_s": 51,
+
+  "model": { "requested": "claude-opus-5", "actual": null },
+  "usage": { "turns": null, "input": null, "output": null,
+             "cache_write": null, "cache_read": null },
+
+  "gate": {
+    "passed": false,
+    "defect": "Gate questions 1 and 3, on two clauses of the /symbols outcome. (a) The empty-q clause — 'with q omitted or empty it returns the whole universe with each entry's name, sector, currency and decimal places' — appears in neither the prompt's nor the spec's Evidenced-by. The declared suite asserts the fuzzy exclusion, quote order, day change equality, timeframe bar counts, the sparkline and the 422; none of them calls /symbols without q. GET /symbols could return an empty list, or entries missing sector, currency or decimals, and the whole suite stays green. The prompt itself marks this clause as load-bearing — 'It is not a convenience; a later task depends on it' — which is the frontend markets table loading its static metadata once rather than per poll. (b) The inclusion half of the fuzzy match is unevidenced: the evidence asserts only that a named known non-match is excluded, which a matcher returning nothing for every q satisfies. The prompt's own Constraints name both halves — 'include a partial symbol and exclude a known non-match' — so the requirement is stated and only half of it is checked. Both documents carry the same gap, so the prompt and the spec agree and the fix lands in both."
+  },
+
+  "deliverables": [],
+  "evidence": [],
+
+  "status": { "run": "REFUSED", "deliverables": "—", "outcome": "—" },
+  "commits": { "deliverables": null, "log": null },
+  "escalations": [
+    "T6 refused before dispatch: the empty-q whole-universe behaviour is an outcome clause no assertion reads, and the fuzzy match is evidenced on its exclusion side only."
+  ]
+}
