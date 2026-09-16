@@ -114,7 +114,7 @@ wrote down fails visibly instead of being filled in from memory.
 | `specs/` | two specifications — backend and frontend — 24 tasks between them |
 | `prompts/` | one prompt per task |
 | `design/` | the visual target, approved as a static page before any code was written |
-| `decisions/` | six ADRs |
+| `decisions/` | seven ADRs |
 | `incidents/` | two incident records |
 | `process/` | how the work was done, filed apart from decisions about the system |
 | `logs/` | twelve run records from the backend build |
