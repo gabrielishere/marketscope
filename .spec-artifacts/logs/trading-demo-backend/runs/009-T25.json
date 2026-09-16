@@ -1,0 +1,46 @@
+{
+  "seq": 9,
+  "spec": "trading-demo-backend",
+  "task": "T25",
+  "dispatched": true,
+  "prompt": ".spec-artifacts/prompts/trading-demo-backend/T25-tick-engine.md",
+
+  "started": "2026-09-16T00:06:06Z",
+  "ended": "2026-09-16T00:10:46Z",
+  "duration_s": 280,
+
+  "model": { "requested": "claude-opus-5", "actual": "claude-opus-5" },
+  "usage": { "turns": 36, "input": 72, "output": 21030,
+             "cache_write": 161704, "cache_read": 1430793 },
+
+  "gate": { "passed": true, "defect": null },
+
+  "deliverables": [
+    { "path": "backend/app/sim.py", "found": true,
+      "symbols": [
+        { "name": "Engine", "found": true, "line": 109 },
+        { "name": "tick", "found": true, "line": 166 }
+      ] },
+    { "path": "backend/tests/test_sim.py", "found": true, "symbols": [] }
+  ],
+
+  "evidence": [
+    { "command": "cd backend && uv run pytest tests/test_sim.py -v",
+      "exit": 0, "summary": "5 passed in 0.92s; positivity test reports 7 scenarios, 1200 ticks each, 1512000 prices checked, minimum 3.1577751906601668; reconciliation test reports 62685 checks, worst discrepancy 1.68e-16 against a 1e-6 tolerance", "verbatim": null },
+    { "command": "cd backend && uv run pytest tests/ -q",
+      "exit": 0, "summary": "260 passed, 2 warnings in 1.20s (+5 from 255; no earlier test regressed)", "verbatim": null },
+    { "command": "cd backend && uv run python -c \"<orchestrator's own engine run: 300 ticks under all 7 scenarios>\"",
+      "exit": 0, "summary": "independent orchestrator check, not the task's own test: 94185 reconciliations across 7 scenarios, worst discrepancy 1.6761765586625899e-16, within 1e-6; minimum close 3.3464664231424104, strictly positive; one tick grows all 45 buffers by exactly one bar; contribution keys are ['market','rates','oil','usd','credit'] on every bar inspected. grep of sim.py finds no clamp, floor or max(0, ...) on a price", "verbatim": null }
+  ],
+
+  "status": { "run": "DONE", "deliverables": "MADE", "outcome": "PASSED" },
+  "commits": { "deliverables": "d206915", "log": null },
+  "escalations": [
+    "Engine surface T5/T9 will read: Engine(seed, instruments=None, scenario=None), attributes instruments, buffers: dict[str, RingBuffer], prices, tick_index (next bar's index, first bar is tick 0), scenario, activated_at, baseline, and methods tick(), activate(scenario) (stamps activated_at at the next tick index, appends nothing), deactivate() (returns to baseline, clears activated_at). Module function baseline_scenario() is exported for T5.",
+    "close is deliberately not rounded to Instrument.decimals: rounding to two decimals injects up to 5e-3 into every log return and would break the 1e-6 reconciliation. Rounding belongs at the display edge.",
+    "Macro drivers carry residual exactly 0.0 — they are the factor's own index, so an idiosyncratic term on one would be a factor move the factor did not make.",
+    "Synthetic per-tick volume grows with the size of the move (base rate drawn once per instrument from the engine's seeded PRNG), so an active scenario shifts the most-active ranking T8 needs for O11.",
+    "Counts are printed via the capsys.disabled() fixture, because pytest captures stdout on a passing test and the evidence command is fixed at -v with no -s. No conftest.py was added.",
+    "Orchestrator note: the first bar is at tick index 0, which is what T5's backfill must preserve for the Buffer boundaries refusal to stay unreachable."
+  ]
+}
