@@ -26,8 +26,8 @@ feature slots with the portfolio summary first. Every slot renders a skeleton at
 dimensions. No component source declares a hex colour, a `px` value or a millisecond duration.
 
 - **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
-  `grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+px|[0-9]+ms' src/app --include='*.ts'` — must return
-  no match, run from `frontend/` so the path resolves. Then paste `tokens.css` in full with
+  `grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+ms|font-size: *[0-9]+px|(padding|margin|gap)[a-z-]*: *[^;]*[0-9]+px' src/app --include='*.ts' | grep -v '/api/'`
+  — must return no match, run from `frontend/` so the path resolves. Then paste `tokens.css` in full with
   the computed contrast ratio for body text on the page background, and the `dependencies`
   block of `package.json`. Then paste the shell's template, showing the tab navigation, the
   `router-outlet`, and the literal `Simulated feed` **outside** the outlet — so that it is

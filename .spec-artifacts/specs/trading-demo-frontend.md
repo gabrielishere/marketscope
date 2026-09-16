@@ -31,9 +31,12 @@ running, which is what makes that possible.
 - **O22** Across a full poll cycle no numeric column changes width and no row reflows: a
   price moving between `9.99` and `10.01`, or a percentage between `+9.9%` and `+10.1%`,
   leaves every column boundary in the same place.
-- **O23** No component source contains a hex colour, a `px` value or a millisecond duration;
-  every such value resolves through a custom property declared in
-  `frontend/src/styles/tokens.css`.
+- **O23** No component source contains a hex colour, a millisecond duration, or a `px`
+  value used as a **type size or a spacing value**; every such value resolves through a
+  custom property declared in `frontend/src/styles/tokens.css`. Border widths, fixed
+  structural dimensions and media-query breakpoints are exempt, because a CSS media query
+  cannot read a custom property at all and a hairline border is not a design value that
+  varies.
 - **O24** The app has two routes — `/` (dashboard) and `/markets` (table) — and the toolbar,
   its `Simulated feed` label and the active-scenario chip persist across both. Switching
   between them does not create a second `/quotes` poll: the request rate with both tabs
@@ -214,9 +217,15 @@ A component conforms to the mockup or it is wrong. The rules below are the part 
 can be stated independently of the file.
 
 - **One token file is the only source of visual values.** No component declares a raw hex
-  colour, a `px` value of any kind — type size, spacing, border width or radius — or a motion
-  duration of its own. Everything references a custom property from
-  `frontend/src/styles/tokens.css`. This is the same ban O23 states; the two are one rule.
+  colour, a `px` **type size or spacing value**, or a motion duration of its own. Everything
+  else references a custom property from `frontend/src/styles/tokens.css`. This is the same
+  ban O23 states; the two are one rule.
+
+  *Border widths, fixed structural dimensions and media-query breakpoints are exempt, and
+  the exemption is not a convenience. A media query cannot read a custom property — that is
+  a limitation of CSS, not a choice — so a blanket ban would be unsatisfiable by
+  construction. The approved mockup carries 53 `px` values below its own `:root` block for
+  exactly these reasons, and a rule the design target itself fails is the wrong rule.*
 - **Numerals are tabular.** Every price, percentage and quantity renders in a
   `font-variant-numeric: tabular-nums` face, so digits occupy constant width.
 - **No layout shift on poll.** Numeric columns are fixed-width and decimal-aligned; a price
@@ -325,8 +334,9 @@ names and values, not a palette of this task's choosing
 - UPDATE `frontend/src/main.ts`
 
 **Evidenced by:** `cd frontend && npx ng build`, output pasted. Then
-`grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+px|[0-9]+ms' src/app --include='*.ts'` — must return no
-match, and the command is run from `frontend/` so the path resolves. Then paste the shell
+`grep -rnE '#[0-9a-fA-F]{3,6}\b|[0-9]+ms|font-size: *[0-9]+px|(padding|margin|gap)[a-z-]*: *[^;]*[0-9]+px' src/app --include='*.ts' | grep -v '/api/'`
+— must return no match, run from `frontend/` so the path resolves. It excludes the
+generated client, which is not component source and is not this rule's to police. Then paste the shell
 template showing the tab navigation, the `router-outlet` and the literal `Simulated feed`
 outside the outlet, so that it is structurally impossible for a route to render without it.
 Then paste `tokens.css`

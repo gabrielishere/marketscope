@@ -1,0 +1,66 @@
+/* The design system's single source of values.
+ *
+ * **Copied from `.spec-artifacts/design/dashboard-mock.html`** — the approved visual
+ * target — with the same property names and the same values. This file is not a palette
+ * anyone chose here; the choosing happened once, before the run, against a static page a
+ * person looked at and approved.
+ *
+ * Every component reads through these and declares no raw value of its own. That rule is
+ * evidenced by a grep over `src/app` for a hex colour, a `px` value or a `ms` duration,
+ * and this is the only file those may appear in.
+ */
+
+/* ── TOKENS ─────────────────────────────────────────────────────────────────
+   The only place a raw value is written. T13 copies this block verbatim.     */
+:root {
+  /* neutral ramp — surfaces dark to light, then text */
+  --n-0:  #0a0c10;   /* page ground                                          */
+  --n-1:  #12151b;   /* panel surface                                        */
+  --n-2:  #191e26;   /* raised surface, table header, input                  */
+  --n-3:  #232a34;   /* hairline border                                      */
+  --n-4:  #333c49;   /* border, emphasised                                   */
+  --n-5:  #6b7684;   /* text, de-emphasised — 4.6:1 on --n-0                 */
+  --n-6:  #9aa4b2;   /* text, secondary — 8.1:1 on --n-0                     */
+  --n-7:  #e6eaf0;   /* text, primary — 15.8:1 on --n-0                      */
+
+  /* signal — direction only, never decoration */
+  --sig-up:      #3fb950;
+  --sig-down:    #f85149;
+  --sig-up-bg:   #10391d;
+  --sig-down-bg: #3d1618;
+
+  /* spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* type scale */
+  --ts-1: 11px;
+  --ts-2: 12px;
+  --ts-3: 13px;
+  --ts-4: 15px;
+  --ts-5: 18px;
+  --ts-6: 24px;
+
+  /* radii */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 10px;
+
+  /* motion — the row flash, and nothing longer */
+  --mo-flash: 160ms;
+
+  /* numeric column widths — fixed, so no digit change moves a boundary */
+  --w-price:  88px;
+  --w-change: 76px;
+  --w-vol:    92px;
+
+  /* fixed row height, so a poll never reflows a list */
+  --h-row: 34px;
+
+  --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
