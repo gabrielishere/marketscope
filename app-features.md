@@ -1,5 +1,17 @@
 # Full Stack Application Demo — Feature Specification
 
+> **These notes were constructed during a call.** They are working notes taken while the
+> requirements were being established — not a finished document, and not the specification.
+>
+> Their job was to capture what the thing needed to be, in the room, before any of it had
+> been decided properly. Everything here was then migrated into the two specifications under
+> `.spec-artifacts/specs/`, which are what the build actually ran from.
+>
+> Read this for **what was asked for**; read the specs for **what was built**. Where the two
+> differ, the specs are authoritative and the difference is deliberate — several things here
+> were cut, narrowed or settled differently once they were written down precisely, and those
+> changes are recorded in `.spec-artifacts/decisions/`.
+
 A trader-facing dashboard for observing price fluctuations of underlyings, in the
 vein of Trading 212. Scope is a demo: credible-looking and complete in its core
 flows, deliberately not production.

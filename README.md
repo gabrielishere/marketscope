@@ -72,6 +72,7 @@ explanation.
 ## Repository layout
 
 ```
+app-features.md           the call notes the specifications were drawn from
 backend/                  FastAPI app, simulation, 309 tests
 frontend/                 Angular workspace; src/app/api/ is generated and committed
 .spec-artifacts/          how this was built — see below
@@ -89,7 +90,6 @@ wrote down fails visibly instead of being filled in from memory.
 
 | | |
 |---|---|
-| `input/` | the original brief the specifications were drawn from |
 | `specs/` | two specifications — backend and frontend — 24 tasks between them |
 | `prompts/` | one prompt per task |
 | `design/` | the visual target, approved as a static page before any code was written |
