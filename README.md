@@ -90,9 +90,7 @@ else, because the collapsed view is for someone who does not know what a beta is
 
 ---
 
-## Deployed
-
-**Live:** _not yet deployed — URL goes here_
+## Deployment
 
 - One service. FastAPI serves the API and the built Angular app on the same origin, so no CORS in production.
 - Docker, two stages: Node builds the frontend, Python runs it. Root `Dockerfile`, no config needed.
