@@ -1,5 +1,7 @@
-# The builder method is independently versioned — see .claude/.git
-.claude/
+# The builder method lives here as ordinary files. It was independently versioned
+# until 2026-09-16; that history is archived outside the repository. Its local
+# permission allowlist is machine-specific and stays out.
+.claude/settings.local.json
 
 .DS_Store
 
