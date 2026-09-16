@@ -133,6 +133,11 @@ class Engine:
         #: The tick index the next appended bar will carry. The first bar is tick 0,
         #: which is what makes session start reachable on the first session.
         self.tick_index = 0
+        #: The shock level currently baked into the prices, per factor. A tick moves this
+        #: toward the active scenario's level and carries the difference as a return, so
+        #: activation, decay, a switch between scenarios and a return to baseline are all
+        #: the same operation.
+        self._applied_shock: dict[str, float] = {factor: 0.0 for factor in FACTORS}
         self._random = random.Random(seed)
         self.prices: dict[str, float] = {
             symbol: instrument.start_price
@@ -212,20 +217,29 @@ class Engine:
         """The change in a factor's shocked level between the last tick and this one.
 
         A shock is a jump in the factor's *level*, so what a tick's return carries is
-        the difference between the level now and the level a tick ago: the whole shock
-        on the activation tick, and the (opposite-signed) decay of it on every tick
-        after. A persistent shock — one written with a null half-life — decays by
-        nothing, so its delta is zero on every tick but the first.
+        the difference between the level the factor should be at now and the level
+        already in the prices: the whole shock on the activation tick, and the
+        (opposite-signed) decay of it on every tick after. A persistent shock — one
+        written with a null half-life — decays by nothing, so its delta is zero on every
+        tick but the first.
+
+        **The comparison is against what is applied, not against the active scenario's
+        own previous level.** Those differ whenever the scenario changes, and taking the
+        second reading leaves the outgoing scenario's level permanently baked into the
+        prices: switch from an oil shock to a rally and the oil move is never unwound, so
+        flipping between scenarios in a demo ratchets prices upward and makes every day
+        change meaningless. Tracking the applied level means a switch unwinds what it
+        replaces, and `deactivate()` unwinds the whole of it.
         """
+        applied = self._applied_shock[factor]
         if self.activated_at is None:
-            return 0.0
-        shock = self.scenario.factors[factor]
-        elapsed = self.tick_index - self.activated_at
-        if elapsed < 0:
-            return 0.0
-        level_now = shock.shock * shock.decay(elapsed)
-        level_before = 0.0 if elapsed == 0 else shock.shock * shock.decay(elapsed - 1)
-        return level_now - level_before
+            target = 0.0
+        else:
+            shock = self.scenario.factors[factor]
+            elapsed = self.tick_index - self.activated_at
+            target = shock.shock * shock.decay(elapsed) if elapsed >= 0 else applied
+        self._applied_shock[factor] = target
+        return target - applied
 
     def _draw_residual(self, instrument: Instrument) -> float:
         """The idiosyncratic part of one instrument's return on this tick.

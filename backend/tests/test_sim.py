@@ -218,3 +218,45 @@ def test_the_same_seed_gives_the_same_run(
     bars_compared = sum(len(bars) for bars in first.values())
     assert bars_compared > 0
     report(capsys, f"bars compared between two runs on seed {SEED}: {bars_compared}")
+
+
+def test_switching_scenarios_unwinds_the_one_it_replaces(capsys) -> None:
+    """A scenario's price effect is not permanently baked in when another replaces it.
+
+    The engine tracks the shock level currently *applied to the prices*, so a tick moves
+    that level toward whatever the active scenario asks for. Activation, decay, a switch
+    and a return to baseline are then the same operation, and none of them strands a
+    level nobody is decaying any more.
+
+    Without this, flipping between scenarios in a demo ratchets prices in one direction
+    and every day-change figure stops meaning anything.
+    """
+    library = load_scenarios()
+    shock = next(one for one in library.values() if one.id == "oil_supply_shock")
+
+    engine = Engine(seed=7)
+    for _ in range(20):
+        engine.tick()
+    before = engine.prices["XOM"]
+
+    engine.activate(shock)
+    engine.tick()
+    lifted = engine.prices["XOM"]
+    assert lifted > before * 1.03, "the oil shock did not lift an oil-exposed name"
+
+    # Back to baseline: the shock's level must come out of the prices, not linger.
+    engine.deactivate()
+    engine.tick()
+    unwound = engine.prices["XOM"]
+
+    lift = (lifted / before - 1) * 100
+    residue = (unwound / before - 1) * 100
+    assert abs(residue) < abs(lift) / 2, (
+        f"the shock lifted XOM {lift:+.2f}% and {residue:+.2f}% was still there after "
+        "returning to baseline; the outgoing level was never unwound"
+    )
+
+    report(
+        capsys,
+        f"oil shock lifted XOM {lift:+.2f}%; after baseline {residue:+.2f}% remains",
+    )

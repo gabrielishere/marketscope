@@ -53,7 +53,7 @@ import { ImpactPanelComponent } from '../features/impact/impact-panel.component'
       .cols {
         display: grid;
         gap: var(--sp-4);
-        grid-template-columns: 300px minmax(0, 1fr) 300px;
+        grid-template-columns: 344px minmax(0, 1fr) 320px;
       }
       @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
       .stack { display: grid; gap: var(--sp-4); align-content: start; }

@@ -42,11 +42,11 @@ interface Row {
     <section class="panel">
       <h2>Watchlist</h2>
       @for (row of rows$ | async; track row.symbol) {
-        <div class="row" [class.flash-up]="row.flash === 'up'"
-             [class.flash-down]="row.flash === 'down'">
+        <div class="row">
           <span class="sym">{{ row.symbol }}</span>
           <app-sparkline class="spark" [points]="row.sparkline" />
-          <span class="px num">{{ row.last.toFixed(2) }}</span>
+          <span class="px num" [class.flash-up]="row.flash === 'up'"
+                [class.flash-down]="row.flash === 'down'">{{ row.last.toFixed(2) }}</span>
           <span class="ch num" [class.up]="row.dayChangePct >= 0"
                 [class.down]="row.dayChangePct < 0">{{ pct(row.dayChangePct) }}</span>
         </div>
@@ -81,7 +81,7 @@ interface Row {
         border-bottom: 1px solid var(--n-3);
       }
       .row:last-child { border-bottom: 0; }
-      .sym { width: 56px; font-weight: 600; }
+      .sym { width: 52px; font-weight: 600; letter-spacing: 0.01em; }
       .spark { margin-left: auto; }
       /* Fixed widths, so a price crossing a digit boundary moves no column. */
       .px { width: var(--w-price); text-align: right; }
@@ -90,18 +90,23 @@ interface Row {
       .up { color: var(--sig-up); }
       .down { color: var(--sig-down); }
 
-      .row.flash-up { animation: flashUp var(--mo-flash) ease-out; }
-      .row.flash-down { animation: flashDown var(--mo-flash) ease-out; }
+      /* The flash marks the cell that changed, not the whole row.
+       *
+       * Every instrument reprices on every tick, so a row-wide flash means all six rows
+       * flashing every poll — which is not a signal, it is a strobe. Tinting just the
+       * price draws the eye to the number that moved and leaves the rest still. */
+      .px.flash-up { animation: flashUp var(--mo-flash) ease-out; }
+      .px.flash-down { animation: flashDown var(--mo-flash) ease-out; }
       @keyframes flashUp {
-        from { background: var(--sig-up-bg); }
-        to { background: transparent; }
+        from { color: var(--sig-up); }
+        to { color: var(--n-7); }
       }
       @keyframes flashDown {
-        from { background: var(--sig-down-bg); }
-        to { background: transparent; }
+        from { color: var(--sig-down); }
+        to { color: var(--n-7); }
       }
       @media (prefers-reduced-motion: reduce) {
-        .row.flash-up, .row.flash-down { animation: none; }
+        .px.flash-up, .px.flash-down { animation: none; }
       }
     `,
   ],

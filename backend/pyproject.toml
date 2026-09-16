@@ -12,6 +12,7 @@ dependencies = [
 dev = [
     "pytest",
     "httpx",
+    "uvicorn>=0.53.0",
 ]
 
 [tool.pytest.ini_options]
