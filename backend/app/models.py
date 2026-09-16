@@ -24,6 +24,9 @@ class Quote(BaseModel):
     day_change_pct: float = Field(
         description="(close_latest / close_at_session_start - 1) * 100."
     )
+    session_volume: float = Field(
+        description="Sum of volume from session start to the latest bar."
+    )
     sparkline: list[float] = Field(
         description=(
             "Recent closes, oldest first and the latest last, for the row sparkline. "

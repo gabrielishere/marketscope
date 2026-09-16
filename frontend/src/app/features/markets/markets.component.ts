@@ -145,7 +145,7 @@ export class MarketsComponent {
           decimals: entry.decimals,
           last: quote.last,
           dayChangePct: quote.day_change_pct,
-          sessionVolume: 0,
+          sessionVolume: quote.session_volume,
         };
         const rows = bySector.get(entry.sector) ?? [];
         rows.push(row);

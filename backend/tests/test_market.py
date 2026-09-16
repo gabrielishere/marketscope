@@ -148,6 +148,25 @@ def test_every_quote_carries_a_sparkline_ending_at_the_latest_close(
     report(capsys, f"sparklines carried {len(body[0]['sparkline'])} closes, latest last")
 
 
+def test_every_quote_carries_its_session_volume(client, state, capsys) -> None:
+    """The markets table's volume column binds this.
+
+    Added after that column was found rendering `0` for all forty-five rows: `Quote`
+    carried no volume, so the component had nothing to bind and a placeholder shipped.
+    Nothing else in this suite reads the field, so without this assertion it could
+    silently go missing again.
+    """
+    symbols = list(state.instruments)[:6]
+    body = client.get("/quotes", params={"symbols": ",".join(symbols)}).json()
+
+    for entry in body:
+        expected = state.buffers[entry["symbol"]].session_volume()
+        assert entry["session_volume"] == pytest.approx(expected)
+        assert entry["session_volume"] > 0.0, f"{entry['symbol']} reports no volume"
+
+    report(capsys, f"session volume served for {len(body)} symbols, all non-zero")
+
+
 def test_an_unknown_symbol_is_rejected_rather_than_silently_dropped(client) -> None:
     """A shorter list would misalign every entry after the missing one."""
     response = client.get("/quotes", params={"symbols": "NOPE"})

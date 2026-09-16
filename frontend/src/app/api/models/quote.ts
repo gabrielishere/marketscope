@@ -17,6 +17,11 @@ export interface Quote {
   last: number;
 
   /**
+   * Sum of volume from session start to the latest bar.
+   */
+  session_volume: number;
+
+  /**
    * Recent closes, oldest first and the latest last, for the row sparkline. Prices, not returns; drawn on its own scale.
    */
   sparkline: Array<number>;

@@ -135,6 +135,7 @@ def _quote(symbol: str, buffer: RingBuffer) -> Quote:
         symbol=symbol,
         last=buffer.latest().close,
         day_change_pct=buffer.day_change_pct(),
+        session_volume=buffer.session_volume(),
         # Oldest first, latest last, prices rather than returns — the shape the
         # contract states and the row sparkline draws on its own scale.
         sparkline=[bar.close for bar in bars[-SPARKLINE_POINTS:]],

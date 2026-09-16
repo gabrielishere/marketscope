@@ -42,6 +42,7 @@ QUOTE: dict[str, object] = {
     "symbol": "XOM",
     "last": 118.42,
     "day_change_pct": 6.18,
+    "session_volume": 1_250_000.0,
     "sparkline": [111.2, 113.7, 116.0, 118.42],
 }
 
@@ -151,7 +152,7 @@ PORTFOLIO_IMPACT: dict[str, object] = {
 
 # The field names *Response models* states, written out rather than derived.
 FIELD_SETS: list[tuple[type[BaseModel], set[str]]] = [
-    (Quote, {"symbol", "last", "day_change_pct", "sparkline"}),
+    (Quote, {"symbol", "last", "day_change_pct", "session_volume", "sparkline"}),
     (Candle, {"t", "open", "high", "low", "close", "volume"}),
     (SymbolMatch, {"symbol", "name", "sector", "currency", "decimals"}),
     (Position, {"symbol", "quantity", "avg_entry", "unrealised_pnl"}),

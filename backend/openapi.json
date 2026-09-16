@@ -820,6 +820,11 @@
             "title": "Day Change Pct",
             "description": "(close_latest / close_at_session_start - 1) * 100."
           },
+          "session_volume": {
+            "type": "number",
+            "title": "Session Volume",
+            "description": "Sum of volume from session start to the latest bar."
+          },
           "sparkline": {
             "items": {
               "type": "number"
@@ -834,6 +839,7 @@
           "symbol",
           "last",
           "day_change_pct",
+          "session_volume",
           "sparkline"
         ],
         "title": "Quote",

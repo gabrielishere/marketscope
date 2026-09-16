@@ -119,6 +119,10 @@ wrote down fails visibly instead of being filled in from memory.
 | `process/` | how the work was done, filed apart from decisions about the system |
 | `logs/` | twelve run records from the backend build |
 
+Plus [`docs/bug-report-2026-09-16.md`](docs/bug-report-2026-09-16.md) — two defects found by
+reviewing screenshots of the running app against the outcomes the spec asserts. One fixed,
+one recorded and deliberately left, with the reason.
+
 **The honest version of how it went** is in
 [`incidents/`](.spec-artifacts/incidents/). The cold gate refused four dispatches, every one
 a real authoring defect — including an API contract whose fields no document specified, and

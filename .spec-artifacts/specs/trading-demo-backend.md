@@ -152,7 +152,9 @@ always there rather than one that may be absent.
 **Market**
 
 - **`Quote`** — `symbol: str`, `last: float`, `day_change_pct: float`,
-  `sparkline: list[float]`. The sparkline is recent closes, oldest first and the latest last —
+  `session_volume: float`, `sparkline: list[float]`. Session volume rides the quote rather
+  than `SymbolMatch` because it changes every tick: `/symbols` serves the static metadata the
+  markets table loads once, so a volume column sourced from there would never move. The sparkline is recent closes, oldest first and the latest last —
   prices, not returns, drawn on their own scale. This settles it for T6 and for the frontend;
   neither chooses.
 - **`Candle`** — `t: int` (tick index of the bar's first constituent tick), `open`, `high`,
