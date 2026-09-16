@@ -90,6 +90,20 @@ else, because the collapsed view is for someone who does not know what a beta is
 
 ---
 
+## Deployed
+
+**Live:** _not yet deployed — URL goes here_
+
+- One service. FastAPI serves the API and the built Angular app on the same origin, so no CORS in production.
+- Docker, two stages: Node builds the frontend, Python runs it. Root `Dockerfile`, no config needed.
+- Render, Frankfurt, paid instance — the free tier sleeps and a 30s cold start reads as broken.
+- Single instance only: the simulation lives in the process, so two replicas would serve different prices.
+- State is in memory. A restart replays the 780-tick backfill from a fixed seed and resets to baseline.
+
+Full plan and its limits: [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+---
+
 ## Repository layout
 
 ```
